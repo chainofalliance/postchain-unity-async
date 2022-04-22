@@ -1,0 +1,15 @@
+// Simple user entity that saves a user by its name.
+entity User {
+	key name;
+}
+
+// Creates a new user. Fails if the user already exists.
+operation register_user(name) {
+	create User (name);
+	print("Successfully registered user with name " + name);
+}
+
+// Checks if a user by the given name exists.
+query check_user(name) {
+	return User @? {name} != null;
+}

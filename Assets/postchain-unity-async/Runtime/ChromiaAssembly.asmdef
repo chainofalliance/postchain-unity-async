@@ -1,0 +1,19 @@
+{
+    "name": "ChromiaAssembly",
+    "rootNamespace": "",
+    "references": [
+        "GUID:54a36e3b5acbc9258bd5bd73ad5da5ca",
+        "GUID:88280052f5f4bea36974254a977c223d",
+        "GUID:17dab2752f15cfca4b94ac193f3d9149",
+        "GUID:c6b67c351079b58c5a541b2fca1e6e47"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

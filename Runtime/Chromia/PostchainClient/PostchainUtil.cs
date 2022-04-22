@@ -21,16 +21,16 @@ namespace Chromia.Postchain.Client
         */
         public static byte[] Sign(byte[] content, byte[] privKey)
         {
-            if(privKey == null)
+            if (privKey == null)
             {
                 throw new Exception("Programmer error, missing privKey");
             }
 
-            if(privKey.Length != 32)
+            if (privKey.Length != 32)
             {
                 throw new Exception("Programmer error. Invalid key length. Expected 32, but got " + privKey.Length);
             }
-            
+
             return PostchainUtil.SignDigest(content, privKey);
         }
 
@@ -68,7 +68,7 @@ namespace Chromia.Postchain.Client
         * @returns {pubKey: Buffer}
         */
         public static byte[] VerifyKeyPair(string privKey)
-        {   
+        {
             var pubKey = secp256k1.Secp256K1Manager.GetPublicKey(HexStringToBuffer(privKey), true);
             return pubKey;
         }
@@ -103,9 +103,9 @@ namespace Chromia.Postchain.Client
 
             foreach (var c in str)
             {
-                retArr.Add((byte) c);
+                retArr.Add((byte)c);
             }
-            
+
             return retArr.ToArray();
         }
 
@@ -124,13 +124,13 @@ namespace Chromia.Postchain.Client
             var queryDict = new Dictionary<string, object>();
 
             queryDict.Add("type", queryName);
-            if (queryObject != null) 
+            if (queryObject != null)
             {
                 foreach (var entry in queryObject)
                 {
                     if (entry.content is byte[])
                     {
-                        queryDict.Add(entry.name, PostchainUtil.ByteArrayToString((byte[]) entry.content));
+                        queryDict.Add(entry.name, PostchainUtil.ByteArrayToString((byte[])entry.content));
                     }
                     else
                     {
@@ -161,7 +161,7 @@ namespace Chromia.Postchain.Client
         }
 
         internal static bool IsNumericType(this object o)
-        {   
+        {
             switch (Type.GetTypeCode(o.GetType()))
             {
                 case TypeCode.Byte:

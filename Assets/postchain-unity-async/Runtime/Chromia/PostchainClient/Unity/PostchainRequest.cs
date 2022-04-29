@@ -1,37 +1,48 @@
 using System;
-using Newtonsoft.Json;
-using System.Collections;
+using UnityEngine.Networking;
+
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Client.Unity
 {
-    public class PostchainRequest<T> : PostchainRequestRaw
+    public class PostchainRequest
     {
-        public T parsedContent;
-
-        public PostchainRequest(Uri uri) : base(uri)
-        { }
-
-        public PostchainRequest(string urlBase, string path) : base(urlBase, path)
-        { }
-
-        public override IEnumerator Get()
+        public static async UniTask<PostchainResponse<T>> Get<T>(string baseUrl, string path)
         {
-            yield return base.Get();
-
-            if (!error)
-            {
-                this.parsedContent = JsonConvert.DeserializeObject<T>(this.content);
-            }
+            return await Get<T>(ToUri(baseUrl, path));
         }
 
-        public override IEnumerator Post(string payload)
+        public static async UniTask<PostchainResponse<T>> Get<T>(Uri uri)
         {
-            yield return base.Post(payload);
+            var response = await UnityWebRequest.Get(uri).SendWebRequest();
 
-            if (!error)
-            {
-                this.parsedContent = JsonConvert.DeserializeObject<T>(this.content);
-            }
+            return new PostchainResponse<T>(response);
+        }
+
+        public static async UniTask<PostchainResponse<T>> Post<T>(string baseUrl, string path, string payload)
+        {
+            return await Post<T>(ToUri(baseUrl, path), payload);
+        }
+
+        public static async UniTask<PostchainResponse<T>> Post<T>(Uri uri, string payload)
+        {
+            var request = new UnityWebRequest(uri, "POST");
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(payload);
+            var uploader = new UploadHandlerRaw(bodyRaw);
+
+            uploader.contentType = "application/json";
+
+            request.uploadHandler = uploader;
+            request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+
+            var response = await request.SendWebRequest();
+
+            return new PostchainResponse<T>(response);
+        }
+
+        public static Uri ToUri(string baseUrl, string path)
+        {
+            return new Uri(new Uri(baseUrl), path);
         }
     }
 }

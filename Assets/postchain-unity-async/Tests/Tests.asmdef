@@ -4,7 +4,11 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "ChromiaAssembly"
+        "ChromiaAssembly",
+        "UniTask",
+        "UniTask.Addressables",
+        "UniTask.Linq",
+        "UniTask.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

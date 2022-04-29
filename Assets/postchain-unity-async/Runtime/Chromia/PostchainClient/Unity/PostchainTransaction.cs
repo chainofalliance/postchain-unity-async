@@ -2,6 +2,7 @@ using Cryptography.ECDSA;
 using System;
 using System.Collections;
 
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Client.Unity
 {
@@ -19,20 +20,20 @@ namespace Chromia.Postchain.Client.Unity
         ///<summary>
         ///Indicates wether the transaction has been sent already.
         ///</summary>
-        public bool sent {get; private set;} = false;
+        public bool sent { get; private set; } = false;
 
         private Gtx _gtxObject;
-        private string _baseUrl;
+        private Uri _baseUri;
         private string _brid;
-        private bool _error;
-        private Action<string> _onError;
 
-        internal PostchainTransaction(Gtx gtx, string baseUrl, string brid, Action<string> onError)
+        private Uri txUri => new Uri(_baseUri, "tx/" + this._brid);
+        private Uri txStatusUri => new Uri(_baseUri, "tx/" + this._brid + "/" + GetTxRID() + "/status");
+
+        internal PostchainTransaction(Gtx gtx, Uri baseUri, string brid)
         {
             this._gtxObject = gtx;
-            this._baseUrl = baseUrl;
+            this._baseUri = baseUri;
             this._brid = brid;
-            this._onError = onError;
         }
 
         ///<summary>
@@ -50,25 +51,18 @@ namespace Chromia.Postchain.Client.Unity
         ///Fails if transaction as already been sent.
         ///</summary>
         ///<returns>Unity coroutine enumerator.</returns>
-        public IEnumerator Post()
+        public async UniTask<PostchainResponse<string>> Post()
         {
             if (this.sent)
             {
-                this._onError("Tried to send tx twice");
+                return PostchainResponse<string>.ErrorResponse("Tried to send tx twice");
             }
             else
             {
                 var payload = String.Format(@"{{""tx"": ""{0}""}}", Serialize());
 
-                var request = new PostchainRequestRaw(this._baseUrl, "tx/" + this._brid);
-                yield return request.Post(payload);
-
                 this.sent = true;
-                this._error = request.error;
-                if (this._error)
-                {
-                    this._onError(request.errorMessage);
-                }
+                return await PostchainRequest.Post<string>(txUri, payload);
             }
         }
 
@@ -78,15 +72,12 @@ namespace Chromia.Postchain.Client.Unity
         ///</summary>
         ///<param name = "callback">Action that gets called once the transaction has been confirmed.</param>
         ///<returns>Unity coroutine enumerator.</returns>
-        public IEnumerator PostAndWait(Action callback)
+        public async UniTask<PostchainResponse<string>> PostAndWait()
         {
-            yield return Post();
-            yield return WaitConfirmation();
+            var response = await Post();
+            var waitResponse = await WaitConfirmation();
 
-            if (!this._error)
-            {
-                callback();
-            }
+            return waitResponse.Error ? waitResponse : response;
         }
 
         ///<summary>
@@ -122,41 +113,34 @@ namespace Chromia.Postchain.Client.Unity
             return this._gtxObject.Encode();
         }
 
-        private IEnumerator WaitConfirmation()
+        private async UniTask<PostchainResponse<string>> WaitConfirmation()
         {
-            var request = new PostchainRequest<TxStatusResponse>(this._baseUrl, "tx/" + this._brid + "/" + GetTxRID() + "/status");
-            yield return request.Get();
+            var request = await PostchainRequest.Get<TxStatusResponse>(txStatusUri);
 
-            var ret = request.parsedContent;
-            this._error = true;
+            var ret = request.Content;
             switch (ret.status)
             {
                 case "confirmed":
                     {
-                        this._error = false;
-                        break;
+                        return PostchainResponse<string>.SuccessResponse();
                     }
                 case "rejected":
                 case "unknown":
                     {
-                        this._onError(ret.rejectReason);
-                        break;
+                        return PostchainResponse<string>.ErrorResponse(ret.rejectReason);
                     }
                 case "waiting":
                     {
-                        yield return new UnityEngine.WaitForSeconds(0.511f);
-                        yield return WaitConfirmation();
-                        break;
+                        await UniTask.Delay(TimeSpan.FromMilliseconds(511), ignoreTimeScale: false);
+                        return await WaitConfirmation();
                     }
                 case "exception":
                     {
-                        this._onError("HTTP Exception: " + ret.rejectReason);
-                        break;
+                        return PostchainResponse<string>.ErrorResponse("HTTP Exception: " + ret.rejectReason);
                     }
                 default:
                     {
-                        this._onError("Got unexpected response from server: " + ret.status);
-                        break;
+                        return PostchainResponse<string>.ErrorResponse($"Got unexpected response from server ({ret.status}): {ret.rejectReason}");
                     }
             }
         }

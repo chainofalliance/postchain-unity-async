@@ -1,7 +1,8 @@
 
-using System.Collections;
+using Chromia.Postchain.Client;
 using Newtonsoft.Json;
-using System;
+
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -23,26 +24,23 @@ namespace Chromia.Postchain.Ft3
             this.Asset = new Asset(name, chain_id);
         }
 
-        public static IEnumerator GetByAccountId(string id, Blockchain blockchain, Action<AssetBalance[]> onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<AssetBalance[]>> GetByAccountId(string id, Blockchain blockchain)
         {
-            yield return blockchain.Query<AssetBalance[]>("ft3.get_asset_balances",
-                new (string, object)[] { ("account_id", id) }, onSuccess, onError);
+            return blockchain.Query<AssetBalance[]>("ft3.get_asset_balances", new (string, object)[] { ("account_id", id) });
         }
 
-        public static IEnumerator GetByAccountAndAssetId(string accountId, string assetId, Blockchain blockchain,
-            Action<AssetBalance> onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<AssetBalance>> GetByAccountAndAssetId(string accountId, string assetId, Blockchain blockchain)
         {
-            yield return blockchain.Query<AssetBalance>("ft3.get_asset_balance",
-                new (string, object)[] { ("account_id", accountId), ("asset_id", assetId) }, onSuccess, onError);
+            return blockchain.Query<AssetBalance>("ft3.get_asset_balance", new (string, object)[] { ("account_id", accountId), ("asset_id", assetId) });
         }
 
-        public static IEnumerator GiveBalance(string accountId, string assetId, int amount, Blockchain blockchain, Action onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<string>> GiveBalance(string accountId, string assetId, int amount, Blockchain blockchain)
         {
-            yield return blockchain.TransactionBuilder()
+            return blockchain.TransactionBuilder()
                 .Add(Operation.Op("ft3.dev_give_balance", assetId, accountId, amount))
                 .Add(AccountOperations.Nop())
-                .Build(new byte[][] { }, onError)
-                .PostAndWait(onSuccess);
+                .Build(new byte[][] { })
+                .PostAndWait();
         }
     }
 }

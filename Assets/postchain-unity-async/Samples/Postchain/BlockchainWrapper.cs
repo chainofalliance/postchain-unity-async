@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+using Cysharp.Threading.Tasks;
+
 using Chromia.Postchain.Client;
 
 public class BlockchainWrapper : MonoBehaviour
@@ -11,18 +13,18 @@ public class BlockchainWrapper : MonoBehaviour
     private Dictionary<string, byte[]> _keyPair;
     private Dictionary<string, List<Tuple<string, object[]>>> _trackItems;
     private System.Random _random = new System.Random();
-	#endregion
+    #endregion
 
-	#region UNITY_CALLBACKS
+    #region UNITY_CALLBACKS
     void Awake()
     {
         _trackItems = new Dictionary<string, List<Tuple<string, object[]>>>();
         _client = gameObject.GetComponent<BlockchainClient>();
         SetKeyPair(CreateKeyPair());
     }
-	#endregion
+    #endregion
 
-	#region PUBLIC_METHODS
+    #region PUBLIC_METHODS
 
     // Creates a new private/public keypair.
     public Dictionary<string, byte[]> CreateKeyPair()
@@ -58,7 +60,7 @@ public class BlockchainWrapper : MonoBehaviour
     }
 
     // Submits all track operations saved in a specific topic. Can be configured to use a new keypair.
-    public void SubmitTrackOperations(Action onSuccess, Action<string> onError, string topic, bool newKey = false)
+    public async void SubmitTrackOperations(string topic, bool newKey = false)
     {
         if (!_trackItems.ContainsKey(topic))
         {
@@ -67,12 +69,12 @@ public class BlockchainWrapper : MonoBehaviour
 
         var keyPair = _keyPair;
 
-        if(newKey)
+        if (newKey)
             keyPair = CreateKeyPair();
 
-        var request = _client.NewTransaction(new byte[][] {keyPair["pubKey"]}, onError);
+        var request = _client.NewTransaction(new byte[][] { keyPair["pubKey"] });
 
-        foreach(var entry in _trackItems[topic])
+        foreach (var entry in _trackItems[topic])
         {
             request.AddOperation(entry.Item1, entry.Item2);
         }
@@ -83,17 +85,18 @@ public class BlockchainWrapper : MonoBehaviour
             the blockchain. 
         */
         request.AddOperation("nop", _random.Next(System.Int32.MinValue, System.Int32.MaxValue).ToString());
-        
+
         request.Sign(keyPair["privKey"], keyPair["pubKey"]);
 
         _trackItems[topic].Clear();
-        StartCoroutine(request.PostAndWait(onSuccess));
+
+        await request.PostAndWait();
     }
 
     // Sends an operation immediately as a transaction.
-    public void Operation(Action onSuccess, Action<string> onError, string name, params object[] item)
+    public UniTask<PostchainResponse<string>> Operation(string name, params object[] item)
     {
-        var request = _client.NewTransaction(new byte[][] {_keyPair["pubKey"]}, onError);
+        var request = _client.NewTransaction(new byte[][] { _keyPair["pubKey"] });
         request.AddOperation(name, item);
 
         /*
@@ -104,13 +107,13 @@ public class BlockchainWrapper : MonoBehaviour
         request.AddOperation("nop", _random.Next(System.Int32.MinValue, System.Int32.MaxValue).ToString());
 
         request.Sign(_keyPair["privKey"], _keyPair["pubKey"]);
-        StartCoroutine(request.PostAndWait(onSuccess));
+        return request.PostAndWait();
     }
 
     // Queries data from the blockchain. 
-    public void Query<T>(Action<T> onSuccess, Action<string> onError, string type, params (string name, object content)[] queryObject)
+    public UniTask<PostchainResponse<T>> Query<T>(string type, params (string name, object content)[] queryObject)
     {
-        StartCoroutine(_client.Query<T>(type, queryObject, onSuccess, onError));
+        return _client.Query<T>(type, queryObject);
     }
 
     // Returns the pubkey of the local keypair.
@@ -118,5 +121,5 @@ public class BlockchainWrapper : MonoBehaviour
     {
         return _keyPair["pubKey"];
     }
-	#endregion
+    #endregion
 }

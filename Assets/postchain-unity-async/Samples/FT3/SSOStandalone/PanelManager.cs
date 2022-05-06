@@ -23,7 +23,7 @@ public class PanelManager : MonoBehaviour
         }
     }
 
-    public static void AddOptionsToPanel(List<(Account, User)> aus)
+    public static void AddOptionsToPanel((Account, User)[] aus)
     {
         var options = aus.Select((elem) => new Dropdown.OptionData(elem.Item1.Id));
         PanelManager.Instance.AccountsDropdown.AddOptions(options.ToList());

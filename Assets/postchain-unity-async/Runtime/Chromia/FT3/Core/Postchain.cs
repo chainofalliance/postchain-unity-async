@@ -1,5 +1,4 @@
-using System.Collections;
-using System;
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -12,13 +11,13 @@ namespace Chromia.Postchain.Ft3
             this._url = url;
         }
 
-        public IEnumerator Blockchain(string id, Action<Blockchain> onSuccess, Action<string> onError)
+        public UniTask<Blockchain> Blockchain(string id)
         {
             var directoryService = new DirectoryServiceBase(
                 new ChainConnectionInfo[] { new ChainConnectionInfo(id, _url) }
             );
 
-            yield return Ft3.Blockchain.Initialize(id, directoryService, onSuccess, onError);
+            return Ft3.Blockchain.Initialize(id, directoryService);
         }
     }
 }

@@ -1,5 +1,5 @@
 using Chromia.Postchain.Ft3;
-using System.Collections;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using System;
 
@@ -21,44 +21,23 @@ public class SSOStandalone : MonoBehaviour
         SSO.VaultUrl = _vaultUrl;
     }
 
-    private void Start()
-    {
-        StartCoroutine(StartRoutine());
-    }
-
-    private IEnumerator ConnectToBlockchain()
+    private async void Start()
     {
         Postchain postchain = new Postchain(_baseURL);
-        yield return postchain.Blockchain(_blockchainRID, SetBlockchain, DefaultErrorHandler);
-    }
-
-    private void SetBlockchain(Blockchain blockchain)
-    {
-        this._blockchain = blockchain;
-    }
-
-    private void DefaultErrorHandler(string error)
-    {
-        throw new Exception(error);
-    }
-
-    private IEnumerator StartRoutine()
-    {
-        yield return ConnectToBlockchain();
+        _blockchain = await postchain.Blockchain(_blockchainRID);
         _sso = new SSO(this._blockchain);
 
-        yield return _sso.AutoLogin(PanelManager.AddOptionsToPanel, DefaultErrorHandler);
+        var aus = await _sso.AutoLogin();
+        PanelManager.AddOptionsToPanel(aus);
     }
-
-
-    private IEnumerator SSOS()
+    private async UniTask SSOS()
     {
         ProtocolHandler.Register(_customProtocolName);
         _sso.InitiateLogin(_successUrl, _cancelUrl);
 
         while (_sso.Store.TmpTx == null)
         {
-            yield return new WaitForSeconds(3);
+            await UniTask.Delay(TimeSpan.FromSeconds(3), ignoreTimeScale: false);
             _sso.Store.Load();
         }
 
@@ -66,12 +45,16 @@ public class SSOStandalone : MonoBehaviour
         payload = payload.Split("?"[0])[1];
         string raw = payload.Split("="[0])[1];
 
-        yield return _sso.FinalizeLogin(raw, PanelManager.AddOptionToPanel, DefaultErrorHandler);
+        var res = await _sso.FinalizeLogin(raw);
+
+        if (!res.Error)
+            PanelManager.AddOptionToPanel(res.Content);
+
     }
 
-    public void Connect()
+    public async void Connect()
     {
         if (this._blockchain == null) return;
-        StartCoroutine(SSOS());
+        await SSOS();
     }
 }

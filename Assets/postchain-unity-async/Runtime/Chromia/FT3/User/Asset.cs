@@ -1,7 +1,7 @@
 using Chromia.Postchain.Client;
-using System.Collections;
 using Newtonsoft.Json;
-using System;
+
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -39,29 +39,32 @@ namespace Chromia.Postchain.Ft3
             return Util.ByteArrayToString(hash);
         }
 
-        public static IEnumerator Register(string name, string chainId, Blockchain blockchain, Action<Asset> onSuccess, Action<string> onError)
+        public async static UniTask<PostchainResponse<Asset>> Register(string name, string chainId, Blockchain blockchain)
         {
-            yield return blockchain.TransactionBuilder()
+            var res = await blockchain.TransactionBuilder()
                 .Add(Operation.Op("ft3.dev_register_asset", name, chainId))
-                .Build(new byte[][] { }, onError)
-                .PostAndWait(() => onSuccess(new Asset(name, chainId)));
+                .Build(new byte[][] { })
+                .PostAndWait();
+
+            if (res.Error)
+                return PostchainResponse<Asset>.ErrorResponse(res.ErrorMessage);
+            else
+                return PostchainResponse<Asset>.SuccessResponse(new Asset(name, chainId));
         }
 
-        public static IEnumerator GetByName(string name, Blockchain blockchain, Action<Asset[]> onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<Asset[]>> GetByName(string name, Blockchain blockchain)
         {
-            yield return blockchain.Query<Asset[]>("ft3.get_asset_by_name",
-                new (string, object)[] { ("name", name) }, onSuccess, onError);
+            return blockchain.Query<Asset[]>("ft3.get_asset_by_name", new (string, object)[] { ("name", name) });
         }
 
-        public static IEnumerator GetById(string id, Blockchain blockchain, Action<Asset> onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<Asset>> GetById(string id, Blockchain blockchain)
         {
-            yield return blockchain.Query<Asset>("ft3.get_asset_by_id",
-                new (string, object)[] { ("asset_id", id) }, onSuccess, onError);
+            return blockchain.Query<Asset>("ft3.get_asset_by_id", new (string, object)[] { ("asset_id", id) });
         }
 
-        public static IEnumerator GetAssets(Blockchain blockchain, Action<Asset[]> onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<Asset[]>> GetAssets(Blockchain blockchain)
         {
-            yield return blockchain.Query<Asset[]>("ft3.get_all_assets", null, onSuccess, onError);
+            return blockchain.Query<Asset[]>("ft3.get_all_assets", null);
         }
     }
 }

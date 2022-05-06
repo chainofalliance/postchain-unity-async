@@ -1,8 +1,9 @@
 using Chromia.Postchain.Client;
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine;
 using System;
+
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -21,14 +22,12 @@ namespace Chromia.Postchain.Ft3
             this._directoryService = directoryService;
         }
 
-        public static IEnumerator Initialize(string blockchainRID, DirectoryService directoryService, Action<Blockchain> onSuccess, Action<string> onError)
+        public async static UniTask<Blockchain> Initialize(string blockchainRID, DirectoryService directoryService)
         {
             var chainConnectionInfo = directoryService.GetChainConnectionInfo(blockchainRID);
 
             if (chainConnectionInfo == null)
-            {
                 throw new Exception("Cannot find details for chain with RID: " + blockchainRID);
-            }
 
             GameObject goConnection = new GameObject();
             goConnection.name = "Blockchain_" + blockchainRID;
@@ -39,8 +38,12 @@ namespace Chromia.Postchain.Ft3
                 chainConnectionInfo.Url
             );
 
-            yield return BlockchainInfo.GetInfo(connection,
-                (BlockchainInfo info) => onSuccess(new Blockchain(blockchainRID, info, connection, directoryService)), onError);
+            var info = await BlockchainInfo.GetInfo(connection);
+
+            if (info.Error)
+                throw new Exception(info.ErrorMessage);
+
+            return new Blockchain(blockchainRID, info.Content, connection, directoryService);
         }
 
         public BlockchainSession NewSession(User user)
@@ -48,86 +51,84 @@ namespace Chromia.Postchain.Ft3
             return new BlockchainSession(user, this);
         }
 
-        public IEnumerator GetAccountsByParticipantId(string id, User user, Action<Account[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Account[]>> GetAccountsByParticipantId(string id, User user)
         {
-            yield return Account.GetByParticipantId(id, this.NewSession(user), onSuccess, onError);
+            return Account.GetByParticipantId(id, this.NewSession(user));
         }
 
-        public IEnumerator GetAccountsByAuthDescriptorId(string id, User user, Action<Account[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Account[]>> GetAccountsByAuthDescriptorId(string id, User user)
         {
-            yield return Account.GetByAuthDescriptorId(id, this.NewSession(user), onSuccess, onError);
+            return Account.GetByAuthDescriptorId(id, this.NewSession(user));
         }
 
-        public IEnumerator RegisterAccount(AuthDescriptor authDescriptor, User user, Action<Account> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Account>> RegisterAccount(AuthDescriptor authDescriptor, User user)
         {
-            yield return Account.Register(authDescriptor, this.NewSession(user), onSuccess, onError);
+            return Account.Register(authDescriptor, this.NewSession(user));
         }
 
-        public IEnumerator GetAssetsByName(string name, Action<Asset[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Asset[]>> GetAssetsByName(string name)
         {
-            yield return Asset.GetByName(name, this, onSuccess, onError);
+            return Asset.GetByName(name, this);
         }
 
-        public IEnumerator GetAssetById(string id, Action<Asset> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Asset>> GetAssetById(string id)
         {
-            yield return Asset.GetById(id, this, onSuccess, onError);
+            return Asset.GetById(id, this);
         }
 
-        public IEnumerator GetAllAssets(Action<Asset[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Asset[]>> GetAllAssets()
         {
-            yield return Asset.GetAssets(this, onSuccess, onError);
+            return Asset.GetAssets(this);
         }
 
-        public IEnumerator LinkChain(string chainId, Action onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<string>> LinkChain(string chainId)
         {
-            yield return this.TransactionBuilder()
+            return this.TransactionBuilder()
                 .Add(Operation.Op("ft3.xc.link_chain", chainId))
-                .Build(new byte[][] { }, onError)
-                .PostAndWait(onSuccess);
+                .Build(new byte[][] { })
+                .PostAndWait();
         }
 
-        public IEnumerator IsLinkedWithChain(string chainId, Action<bool> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<bool>> IsLinkedWithChain(string chainId)
         {
-            yield return this.Query<int>("ft3.xc.is_linked_with_chain",
-                new (string, object)[] { ("chain_rid", chainId) },
-                (int is_linked) => onSuccess(is_linked == 1), onError);
+            return this.Query<bool>("ft3.xc.is_linked_with_chain", new (string, object)[] { ("chain_rid", chainId) });
         }
 
-        public IEnumerator GetLinkedChainsIds(Action<string[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<string[]>> GetLinkedChainsIds()
         {
-            return this.Query<string[]>("ft3.xc.get_linked_chains", null, onSuccess, onError);
+            return this.Query<string[]>("ft3.xc.get_linked_chains", null);
         }
 
-        public IEnumerator GetLinkedChains(Action<List<Blockchain>> onSuccess, Action<string> onError)
+        public async UniTask<List<Blockchain>> GetLinkedChains()
         {
-            string[] chaindIds = null;
-            yield return this.GetLinkedChainsIds(
-                (string[] linkedChains) => chaindIds = linkedChains, onError
-            );
-
             List<Blockchain> blockchains = new List<Blockchain>();
-            foreach (var chaindId in chaindIds)
+
+            var res = await this.GetLinkedChainsIds();
+            if (res.Error)
+                Debug.LogWarning(res.ErrorMessage);
+
+            foreach (var id in res.Content)
             {
-                yield return Blockchain.Initialize(chaindId, this._directoryService,
-                (Blockchain blockchain) => blockchains.Add(blockchain), onError);
+                var bc = await Blockchain.Initialize(id, this._directoryService);
+                blockchains.Add(bc);
             }
 
-            onSuccess(blockchains);
+            return blockchains;
         }
 
-        public IEnumerator Query<T>(string queryName, (string name, object content)[] queryObject, Action<T> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<T>> Query<T>(string queryName, (string name, object content)[] queryObject)
         {
-            return this.Connection.Query<T>(queryName, queryObject, onSuccess, onError);
+            return this.Connection.Query<T>(queryName, queryObject);
         }
 
-        public IEnumerator Call(Operation operation, User user, Action onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<string>> Call(Operation operation, User user)
         {
-            yield return TransactionBuilder()
+            return TransactionBuilder()
                 .Add(operation)
                 .Add(AccountOperations.Nop())
-                .Build(user.AuthDescriptor.Signers.ToArray(), onError)
+                .Build(user.AuthDescriptor.Signers.ToArray())
                 .Sign(user.KeyPair)
-                .PostAndWait(onSuccess);
+                .PostAndWait();
         }
 
         public TransactionBuilder TransactionBuilder()

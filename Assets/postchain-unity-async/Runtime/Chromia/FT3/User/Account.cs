@@ -1,7 +1,11 @@
 using System.Collections.Generic;
+using Chromia.Postchain.Client;
 using System.Collections;
 using System.Linq;
+using UnityEngine;
 using System;
+
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -102,40 +106,41 @@ namespace Chromia.Postchain.Ft3
             return this.Session.Blockchain;
         }
 
-        public static IEnumerator GetByParticipantId(string id, BlockchainSession session, Action<Account[]> onSuccess, Action<string> onError)
+        public static async UniTask<PostchainResponse<Account[]>> GetByParticipantId(string id, BlockchainSession session)
         {
-            string[] accountIDs = null;
-            yield return session.Query<string[]>("ft3.get_accounts_by_participant_id", new (string, object)[] { ("id", id) },
-                (string[] _accountIDs) => accountIDs = _accountIDs, onError);
+            var res = await session.Query<string[]>("ft3.get_accounts_by_participant_id", new (string, object)[] { ("id", id) });
 
-            yield return Account.GetByIds(accountIDs, session, onSuccess, onError);
+            if (res.Error)
+                return PostchainResponse<Account[]>.ErrorResponse(res.ErrorMessage);
+
+            return await Account.GetByIds(res.Content, session);
         }
 
-        public static IEnumerator GetByAuthDescriptorId(string id, BlockchainSession session, Action<Account[]> onSuccess, Action<string> onError)
+        public static async UniTask<PostchainResponse<Account[]>> GetByAuthDescriptorId(string id, BlockchainSession session)
         {
-            string[] accountIDs = null;
-            yield return session.Query<string[]>("ft3.get_accounts_by_auth_descriptor_id", new (string, object)[] { ("descriptor_id", id) },
-                (string[] _accountIDs) => accountIDs = _accountIDs, onError);
+            var res = await session.Query<string[]>("ft3.get_accounts_by_auth_descriptor_id", new (string, object)[] { ("descriptor_id", id) });
 
-            yield return Account.GetByIds(accountIDs, session, onSuccess, onError);
+            if (res.Error)
+                return PostchainResponse<Account[]>.ErrorResponse(res.ErrorMessage);
+
+            return await Account.GetByIds(res.Content, session);
         }
 
-        public static IEnumerator Register(AuthDescriptor authDescriptor, BlockchainSession session, Action<Account> onSuccess, Action<string> onError)
+        public static async UniTask<PostchainResponse<Account>> Register(AuthDescriptor authDescriptor, BlockchainSession session)
         {
-            Account account = null;
-            yield return session.Call(AccountDevOperations.Register(authDescriptor), () =>
-                {
-                    account = new Account(
-                        Util.ByteArrayToString(authDescriptor.Hash()),
-                        new AuthDescriptor[] { authDescriptor },
-                        session);
-                }
-            , onError);
+            var res = await session.Call(AccountDevOperations.Register(authDescriptor));
 
-            if (account != null)
-            {
-                yield return account.Sync(() => onSuccess(account), onError);
-            }
+            if (res.Error)
+                return PostchainResponse<Account>.ErrorResponse(res.ErrorMessage);
+
+            var account = new Account(
+                 Util.ByteArrayToString(authDescriptor.Hash()),
+                 new AuthDescriptor[] { authDescriptor },
+                 session);
+
+            await account.Sync();
+
+            return PostchainResponse<Account>.SuccessResponse(account);
         }
 
         public static byte[] RawTransactionRegister(User user, AuthDescriptor authDescriptor, Blockchain blockchain)
@@ -147,7 +152,7 @@ namespace Chromia.Postchain.Ft3
             return blockchain.TransactionBuilder()
                 .Add(AccountDevOperations.Register(user.AuthDescriptor))
                 .Add(AccountOperations.AddAuthDescriptor(user.AuthDescriptor.ID, user.AuthDescriptor.ID, authDescriptor))
-                .Build(signers.ToArray(), null)
+                .Build(signers.ToArray())
                 .Sign(user.KeyPair)
                 .Raw();
         }
@@ -160,145 +165,145 @@ namespace Chromia.Postchain.Ft3
 
             return blockchain.TransactionBuilder()
                 .Add(AccountOperations.AddAuthDescriptor(user.AuthDescriptor.ID, user.AuthDescriptor.ID, authDescriptor))
-                .Build(signers.ToArray(), null)
+                .Build(signers.ToArray())
                 .Sign(user.KeyPair)
                 .Raw();
         }
 
-        public static IEnumerator GetByIds(string[] ids, BlockchainSession session, Action<Account[]> onSuccess, Action<string> onError)
+        public static async UniTask<PostchainResponse<Account[]>> GetByIds(string[] ids, BlockchainSession session)
         {
             var accounts = new List<Account>();
             foreach (var id in ids)
             {
-                yield return Account.GetById(id, session, (Account account) => accounts.Add(account), onError);
+                var res = await Account.GetById(id, session);
+
+                if (!res.Error)
+                    accounts.Add(res.Content);
+                else
+                    UnityEngine.Debug.LogWarning(res.ErrorMessage);
             }
 
-            onSuccess(accounts.ToArray());
+            return PostchainResponse<Account[]>.SuccessResponse(accounts.ToArray());
         }
 
-        public static IEnumerator GetById(string id, BlockchainSession session, Action<Account> onSuccess, Action<string> onError)
+        public static async UniTask<PostchainResponse<Account>> GetById(string id, BlockchainSession session)
         {
-            Account account = null;
-            yield return session.Query<string>("ft3.get_account_by_id", new (string, object)[] { ("id", id) },
-            (string _id) =>
-            {
-                if (!String.IsNullOrEmpty(_id)) account = new Account(_id, new AuthDescriptor[] { }, session);
-            }, onError);
+            var res = await session.Query<string>("ft3.get_account_by_id", new (string, object)[] { ("id", id) });
 
-            if (account != null)
+            if (res.Error || String.IsNullOrEmpty(res.Content))
             {
-                yield return account.Sync(() => onSuccess(account), onError);
+                return PostchainResponse<Account>.ErrorResponse(res.ErrorMessage);
             }
+
+            var account = new Account(res.Content, new AuthDescriptor[] { }, session);
+
+            await account.Sync();
+            return PostchainResponse<Account>.SuccessResponse(account);
         }
 
-        public IEnumerator AddAuthDescriptor(AuthDescriptor authDescriptor, Action onSuccess, Action<string> onError)
+        public async UniTask<PostchainResponse<string>> AddAuthDescriptor(AuthDescriptor authDescriptor)
         {
-            yield return this.Session.Call(AccountOperations.AddAuthDescriptor(
+            var res = await this.Session.Call(AccountOperations.AddAuthDescriptor(
                 this.Id,
                 this.Session.User.AuthDescriptor.ID,
-                authDescriptor),
-                () =>
-                {
-                    this.AuthDescriptor.Add(authDescriptor);
-                    onSuccess();
-                }, onError
+                authDescriptor)
+            );
+
+            if (!res.Error)
+                this.AuthDescriptor.Add(authDescriptor);
+
+            return res;
+        }
+
+        public UniTask<PostchainResponse<bool>> IsAuthDescriptorValid(string id)
+        {
+            return Session.Query<bool>("ft3.is_auth_descriptor_valid",
+                new (string, object)[] { ("account_id", this.Id), ("auth_descriptor_id", Util.HexStringToBuffer(id)) }
             );
         }
 
-        public IEnumerator IsAuthDescriptorValid(string id, Action<bool> onSuccess, Action<string> onError)
+        public async UniTask<PostchainResponse<string>> DeleteAllAuthDescriptorsExclude(AuthDescriptor authDescriptor)
         {
-            yield return Session.Query<bool>("ft3.is_auth_descriptor_valid",
-                new (string, object)[] { ("account_id", this.Id), ("auth_descriptor_id", Util.HexStringToBuffer(id)) },
-                onSuccess,
-                onError
-            );
-        }
-
-        public IEnumerator DeleteAllAuthDescriptorsExclude(AuthDescriptor authDescriptor, Action onSuccess, Action<string> onError)
-        {
-            yield return this.Session.Call(AccountOperations.DeleteAllAuthDescriptorsExclude(
+            var res = await this.Session.Call(AccountOperations.DeleteAllAuthDescriptorsExclude(
                 this.Id,
-                authDescriptor.ID),
-                () =>
-                {
-                    this.AuthDescriptor.Clear();
-                    this.AuthDescriptor.Add(authDescriptor);
-                    onSuccess();
-                }, onError
+                authDescriptor.ID)
             );
-        }
 
-        public IEnumerator DeleteAuthDescriptor(AuthDescriptor authDescriptor, Action onSuccess, Action<string> onError)
-        {
-            yield return this.Session.Call(AccountOperations.DeleteAuthDescriptor(
-                this.Id,
-                this.Session.User.AuthDescriptor.ID,
-                authDescriptor.ID),
-                () =>
-                {
-                    this.AuthDescriptor.Remove(authDescriptor);
-                    onSuccess();
-                }, onError
-            );
-        }
-
-        public IEnumerator Sync(Action onSuccess, Action<string> onError)
-        {
-            yield return SyncAssets(() => { }, onError);
-            yield return SyncAuthDescriptors(() => { }, onError);
-            yield return SyncRateLimit(() => { }, onError);
-
-            onSuccess();
-        }
-
-        private IEnumerator SyncAssets(Action onSuccess, Action<string> onError)
-        {
-            yield return AssetBalance.GetByAccountId(this.Id, this.Session.Blockchain,
-                (AssetBalance[] balances) =>
-                {
-                    this.Assets = balances.ToList();
-                    onSuccess();
-                }, onError
-            );
-        }
-
-        private IEnumerator SyncAuthDescriptors(Action onSuccess, Action<string> onError)
-        {
-            AuthDescriptorFactory.AuthDescriptorQuery[] authDescriptors = null;
-
-            yield return this.Session.Query<AuthDescriptorFactory.AuthDescriptorQuery[]>("ft3.get_account_auth_descriptors",
-                new (string, object)[] { ("id", this.Id) },
-                (AuthDescriptorFactory.AuthDescriptorQuery[] authQuery) =>
-                {
-                    authDescriptors = authQuery;
-                }, onError);
-
-            var authDescriptorFactory = new AuthDescriptorFactory();
-            List<AuthDescriptor> authList = new List<AuthDescriptor>();
-
-            foreach (var authDescriptor in authDescriptors)
+            if (!res.Error)
             {
-                authList.Add(
-                    authDescriptorFactory.Create(
-                        Util.StringToAuthType((string)authDescriptor.type),
-                        Util.HexStringToBuffer((string)authDescriptor.args)
-                    )
-                );
+                this.AuthDescriptor.Clear();
+                this.AuthDescriptor.Add(authDescriptor);
             }
 
-            this.AuthDescriptor = authList;
-            onSuccess();
+            return res;
         }
 
-        private IEnumerator SyncRateLimit(Action onSuccess, Action<string> onError)
+        public async UniTask<PostchainResponse<string>> DeleteAuthDescriptor(AuthDescriptor authDescriptor)
         {
-            yield return RateLimit.GetByAccountRateLimit(this.Id, this.Session.Blockchain,
-                (RateLimit rateLimit) =>
+            var res = await this.Session.Call(AccountOperations.DeleteAuthDescriptor(
+               this.Id,
+               this.Session.User.AuthDescriptor.ID,
+               authDescriptor.ID)
+           );
+
+            if (!res.Error)
+                this.AuthDescriptor.Remove(authDescriptor);
+
+            return res;
+        }
+
+        public async UniTask Sync()
+        {
+            var syncAssetsTask = SyncAssets();
+            var syncDescTask = SyncAuthDescriptors();
+            var syncLimitTask = SyncRateLimit();
+
+            await UniTask.WhenAll(syncAssetsTask, syncDescTask, syncLimitTask);
+        }
+
+        private async UniTask SyncAssets()
+        {
+            var res = await AssetBalance.GetByAccountId(this.Id, this.Session.Blockchain);
+
+            if (!res.Error)
+                UnityEngine.Debug.LogWarning(res.ErrorMessage);
+            else
+                this.Assets = res.Content.ToList();
+        }
+
+        private async UniTask SyncAuthDescriptors()
+        {
+            var res = await this.Session.Query<AuthDescriptorFactory.AuthDescriptorQuery[]>("ft3.get_account_auth_descriptors",
+                new (string, object)[] { ("id", this.Id) });
+
+
+            if (res.Error)
+                UnityEngine.Debug.LogWarning(res.ErrorMessage);
+            else
+            {
+                var authDescriptorFactory = new AuthDescriptorFactory();
+                List<AuthDescriptor> authList = new List<AuthDescriptor>();
+
+                foreach (var authDescriptor in res.Content)
                 {
-                    this.RateLimit = rateLimit;
-                    onSuccess();
-                }, onError
-            );
+                    authList.Add(
+                        authDescriptorFactory.Create(
+                            Util.StringToAuthType((string)authDescriptor.type),
+                            Util.HexStringToBuffer((string)authDescriptor.args)
+                        )
+                    );
+                }
+
+                this.AuthDescriptor = authList;
+            }
+        }
+
+        private async UniTask SyncRateLimit()
+        {
+            var res = await RateLimit.GetByAccountRateLimit(this.Id, this.Session.Blockchain);
+
+            if (!res.Error)
+                this.RateLimit = res.Content;
         }
 
         public AssetBalance GetAssetById(string id)
@@ -306,70 +311,65 @@ namespace Chromia.Postchain.Ft3
             return this.Assets.Find(assetBalance => assetBalance.Asset.Id.Equals(id));
         }
 
-        public IEnumerator TransferInputsToOutputs(object[] inputs, object[] outputs, Action onSuccess, Action<string> onError)
+        public async UniTask<PostchainResponse<string>> TransferInputsToOutputs(object[] inputs, object[] outputs)
         {
-            bool isTransferCompleted = false;
+            var res = await this.Session.Call(AccountOperations.Transfer(inputs, outputs));
 
-            yield return this.Session.Call(AccountOperations.Transfer(inputs, outputs),
-                () => isTransferCompleted = true, onError);
+            await this.SyncAssets();
 
-            if (isTransferCompleted)
-            {
-                yield return this.SyncAssets(onSuccess, onError);
-            }
+            return res;
         }
 
-        public IEnumerator Transfer(string accountId, string assetId, long amount, Action onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<string>> Transfer(string accountId, string assetId, long amount)
         {
-            var input = new List<object>{
+            var input = new object[] {
                 this.Id,
                 assetId,
                 this.Session.User.AuthDescriptor.ID,
                 amount,
                 new object[] {}
-            }.ToArray();
+            };
 
-            var output = new List<object>{
+            var output = new object[] {
                 accountId,
                 assetId,
                 amount,
                 new object[] {}
-            }.ToArray();
+            };
 
-            yield return this.TransferInputsToOutputs(
+            return this.TransferInputsToOutputs(
                 new object[] { input },
-                new object[] { output },
-                onSuccess, onError
+                new object[] { output }
             );
         }
 
-        public IEnumerator BurnTokens(string assetId, long amount, Action onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<string>> BurnTokens(string assetId, long amount)
         {
-            var input = new List<object>(){
+            var input = new object[]{
                 this.Id,
                 assetId,
                 this.Session.User.AuthDescriptor.Hash(),
                 amount,
                 new object[] {}
-            }.ToArray();
+            };
 
-            yield return this.TransferInputsToOutputs(
-                new List<object>() { input }.ToArray(),
-                new List<object>() { }.ToArray(),
-                onSuccess, onError
+            return this.TransferInputsToOutputs(
+                new object[] { input },
+                new object[] { }
             );
         }
 
-        public IEnumerator XcTransfer(string destinationChainId, string destinationAccountId,
-            string assetId, long amount, Action onSuccess, Action<string> onError)
+        public async UniTask<PostchainResponse<string>> XcTransfer(string destinationChainId, string destinationAccountId,
+            string assetId, long amount)
         {
-            yield return this.Session.Call(this.XcTransferOp(
-                destinationChainId, destinationAccountId, assetId, amount),
-                () =>
-                {
-                    this.SyncAssets(onSuccess, onError);
-                }, onError
+            var res = await this.Session.Call(this.XcTransferOp(
+                destinationChainId, destinationAccountId, assetId, amount)
             );
+
+            if (!res.Error)
+                await this.SyncAssets();
+
+            return res;
         }
 
         public Operation XcTransferOp(string destinationChainId, string destinationAccountId, string assetId, long amount)

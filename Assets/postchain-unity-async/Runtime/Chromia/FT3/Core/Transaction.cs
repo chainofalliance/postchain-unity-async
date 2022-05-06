@@ -1,6 +1,6 @@
 using Chromia.Postchain.Client.Unity;
-using System.Collections;
-using System;
+using Chromia.Postchain.Client;
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -19,14 +19,9 @@ namespace Chromia.Postchain.Ft3
             return this;
         }
 
-        public IEnumerator Post()
+        public UniTask<PostchainResponse<string>> PostAndWait()
         {
-            yield return this._tx.Post();
-        }
-
-        public IEnumerator PostAndWait(Action onSuccess)
-        {
-            yield return this._tx.PostAndWait(onSuccess);
+            return this._tx.PostAndWait();
         }
 
         public byte[] Raw()

@@ -1,5 +1,5 @@
-using System.Collections;
-using System;
+using Chromia.Postchain.Client;
+using Cysharp.Threading.Tasks;
 
 namespace Chromia.Postchain.Ft3
 {
@@ -14,29 +14,29 @@ namespace Chromia.Postchain.Ft3
             this.Blockchain = blockchain;
         }
 
-        public IEnumerator GetAccountById(string id, Action<Account> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Account>> GetAccountById(string id)
         {
-            yield return Account.GetById(id, this, onSuccess, onError);
+            return Account.GetById(id, this);
         }
 
-        public IEnumerator GetAccountsByParticipantId(string id, Action<Account[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Account[]>> GetAccountsByParticipantId(string id)
         {
-            yield return Account.GetByParticipantId(id, this, onSuccess, onError);
+            return Account.GetByParticipantId(id, this);
         }
 
-        public IEnumerator GetAccountsByAuthDescriptorId(string id, Action<Account[]> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<Account[]>> GetAccountsByAuthDescriptorId(string id)
         {
-            yield return Account.GetByAuthDescriptorId(id, this, onSuccess, onError);
+            return Account.GetByAuthDescriptorId(id, this);
         }
 
-        public IEnumerator Query<T>(string queryName, (string name, object content)[] queryObject, Action<T> onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<T>> Query<T>(string queryName, (string name, object content)[] queryObject)
         {
-            yield return this.Blockchain.Query<T>(queryName, queryObject, onSuccess, onError);
+            return this.Blockchain.Query<T>(queryName, queryObject);
         }
 
-        public IEnumerator Call(Operation operation, Action onSuccess, Action<string> onError)
+        public UniTask<PostchainResponse<string>> Call(Operation operation)
         {
-            yield return this.Blockchain.Call(operation, this.User, onSuccess, onError);
+            return this.Blockchain.Call(operation, this.User);
         }
     }
 }

@@ -20,9 +20,9 @@ namespace Chromia.Postchain.Ft3
             return this;
         }
 
-        public Transaction Build(byte[][] signers, Action<string> onError)
+        public Transaction Build(byte[][] signers)
         {
-            var tx = Blockchain.Connection.NewTransaction(signers, onError);
+            var tx = Blockchain.Connection.NewTransaction(signers);
             foreach (var op in _operations)
             {
                 tx.AddOperation(op.Name, op.Args);
@@ -31,9 +31,9 @@ namespace Chromia.Postchain.Ft3
             return new Transaction(tx);
         }
 
-        public Transaction BuildAndSign(User user, Action<string> onError)
+        public Transaction BuildAndSign(User user)
         {
-            return this.Build(user.AuthDescriptor.Signers.ToArray(), onError).Sign(user.KeyPair);
+            return this.Build(user.AuthDescriptor.Signers.ToArray()).Sign(user.KeyPair);
         }
     }
 }

@@ -3,6 +3,8 @@ using Newtonsoft.Json;
 using System.Collections;
 using Chromia.Postchain.Client;
 
+using Cysharp.Threading.Tasks;
+
 namespace Chromia.Postchain.Ft3
 {
     public class BlockchainInfo
@@ -35,9 +37,9 @@ namespace Chromia.Postchain.Ft3
                     );
         }
 
-        public static IEnumerator GetInfo(BlockchainClient connection, Action<BlockchainInfo> onSuccess, Action<string> onError)
+        public static UniTask<PostchainResponse<BlockchainInfo>> GetInfo(BlockchainClient connection)
         {
-            yield return connection.Query<BlockchainInfo>("ft3.get_blockchain_info", null, onSuccess, onError);
+            return connection.Query<BlockchainInfo>("ft3.get_blockchain_info", null);
         }
     }
 }

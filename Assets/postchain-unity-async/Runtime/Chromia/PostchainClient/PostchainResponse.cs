@@ -24,6 +24,16 @@ namespace Chromia.Postchain.Client
             };
         }
 
+        public static PostchainResponse<T> SuccessResponse(T content)
+        {
+            return new PostchainResponse<T>()
+            {
+                _error = false,
+                _errorMessage = null,
+                _rawContent = JsonConvert.SerializeObject(content)
+            };
+        }
+
         public static PostchainResponse<T> ErrorResponse(string errorMessage)
         {
             return new PostchainResponse<T>()

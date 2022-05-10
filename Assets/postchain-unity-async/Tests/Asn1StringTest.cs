@@ -1,15 +1,12 @@
-using System;
-using System.Collections;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 using Chromia.Postchain.Client;
 using Chromia.Postchain.Client.ASN1;
 
 public class Asn1StringTest
 {
-    [UnityTest]
-    public IEnumerator StringTest()
+    [Test]
+    public void StringTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.String;
@@ -19,11 +16,11 @@ public class Asn1StringTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.String, decoded.String);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
 
-    [UnityTest]
-    public IEnumerator EmptyStringTest()
+    [Test]
+    public void EmptyStringTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.String;
@@ -33,11 +30,11 @@ public class Asn1StringTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.String, decoded.String);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
 
-    [UnityTest]
-    public IEnumerator LongStringTest()
+    [Test]
+    public void LongStringTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.String;
@@ -47,11 +44,11 @@ public class Asn1StringTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.String, decoded.String);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
 
-    [UnityTest]
-    public IEnumerator UTF8StringTest()
+    [Test]
+    public void UTF8StringTest()
     {
         var strings = new string[]{
             "Swedish: Åå Ää Öö",
@@ -62,7 +59,8 @@ public class Asn1StringTest
             "Russian: АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоПпСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя"
         };
 
-        foreach (var str in strings) {
+        foreach (var str in strings)
+        {
             var val = new GTXValue();
             val.Choice = GTXValueChoice.String;
             val.String = str;
@@ -72,6 +70,6 @@ public class Asn1StringTest
             Assert.AreEqual(val.String, decoded.String);
             Assert.AreEqual(val, decoded);
         }
-        yield return null;       
+
     }
 }

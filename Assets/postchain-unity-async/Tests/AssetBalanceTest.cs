@@ -1,12 +1,10 @@
-using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
-using Cysharp.Threading.Tasks;
 
 public class AssetBalanceTest
 {
-    [UnityTest]
-    public async UniTask AssetBalanceTestRun()
+    [Test]
+    public async void AssetBalanceTestRun()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 

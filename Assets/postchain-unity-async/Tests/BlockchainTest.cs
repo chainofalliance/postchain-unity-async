@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
@@ -8,8 +7,8 @@ using Cysharp.Threading.Tasks;
 public class BlockchainTest
 {
     // should provide info
-    [UnityTest]
-    public async UniTask BlockchainTestRun1()
+    [Test]
+    public async void BlockchainTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var info = await BlockchainInfo.GetInfo(blockchain.Connection);
@@ -18,8 +17,8 @@ public class BlockchainTest
     }
 
     // should be able to register an account
-    [UnityTest]
-    public async UniTask BlockchainTestRun2()
+    [Test]
+    public async void BlockchainTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -33,8 +32,8 @@ public class BlockchainTest
     }
 
     // should return account by participant id
-    [UnityTest]
-    public async UniTask BlockchainTestRun3()
+    [Test]
+    public async void BlockchainTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -50,8 +49,8 @@ public class BlockchainTest
     }
 
     // should return account by auth descriptor id
-    [UnityTest]
-    public async UniTask BlockchainTestRun4()
+    [Test]
+    public async void BlockchainTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -67,8 +66,8 @@ public class BlockchainTest
     }
 
     // should be able to link other chain
-    [UnityTest]
-    public async UniTask BlockchainTestRun5()
+    [Test]
+    public async void BlockchainTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -79,8 +78,8 @@ public class BlockchainTest
     }
 
     // should be able to link multiple chains
-    [UnityTest]
-    public async UniTask BlockchainTestRun6()
+    [Test]
+    public async void BlockchainTestRun6()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var chainId1 = TestUtil.GenerateId();
@@ -96,8 +95,8 @@ public class BlockchainTest
     }
 
     // should return false when isLinkedWithChain is called for unknown chain id
-    [UnityTest]
-    public async UniTask BlockchainTestRun7()
+    [Test]
+    public async void BlockchainTestRun7()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var isLinked = await blockchain.IsLinkedWithChain(TestUtil.GenerateId());
@@ -106,8 +105,8 @@ public class BlockchainTest
     }
 
     // should return asset queried by id
-    [UnityTest]
-    public async UniTask BlockchainTestRun8()
+    [Test]
+    public async void BlockchainTestRun8()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);

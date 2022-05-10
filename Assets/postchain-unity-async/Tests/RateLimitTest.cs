@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Chromia.Postchain.Client;
-using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System;
@@ -14,8 +13,8 @@ public class RateLimitTest
     const int POINTS_AT_ACCOUNT_CREATION = 1;
 
     // Should have a limit of 10 requests per minute
-    [UnityTest]
-    public async UniTask RateLimitTestRun1()
+    [Test]
+    public async void RateLimitTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var info = await BlockchainInfo.GetInfo(blockchain.Connection);
@@ -25,8 +24,8 @@ public class RateLimitTest
     }
 
     // should show 10 at request count
-    [UnityTest]
-    public async UniTask RateLimitTestRun2()
+    [Test]
+    public async void RateLimitTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -40,8 +39,8 @@ public class RateLimitTest
     }
 
     // waits 20 seconds and gets 4 points
-    [UnityTest]
-    public async UniTask RateLimitTestRun3()
+    [Test]
+    public async void RateLimitTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -60,8 +59,8 @@ public class RateLimitTest
     }
 
     // can make 4 operations
-    [UnityTest]
-    public async UniTask RateLimitTestRun4()
+    [Test]
+    public async void RateLimitTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -81,8 +80,8 @@ public class RateLimitTest
     }
 
     // can't make another operation because she has 0 points
-    [UnityTest]
-    public async UniTask RateLimitTestRun5()
+    [Test]
+    public async void RateLimitTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();

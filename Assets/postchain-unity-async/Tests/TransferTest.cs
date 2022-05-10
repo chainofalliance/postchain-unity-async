@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
@@ -8,8 +7,8 @@ using Cysharp.Threading.Tasks;
 public class TransferTest
 {
     // should succeed when balance is higher than amount to transfer
-    [UnityTest]
-    public async UniTask TransferTestRun1()
+    [Test]
+    public async void TransferTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -35,8 +34,8 @@ public class TransferTest
     }
 
     // should fail when balance is lower than amount to transfer
-    [UnityTest]
-    public async UniTask TransferTestRun2()
+    [Test]
+    public async void TransferTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -55,8 +54,8 @@ public class TransferTest
     }
 
     // should fail if auth descriptor doesn't have transfer rights
-    [UnityTest]
-    public async UniTask TransferTestRun3()
+    [Test]
+    public async void TransferTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -77,8 +76,8 @@ public class TransferTest
     }
 
     // should succeed if transferring tokens to a multisig account
-    [UnityTest]
-    public async UniTask TransferTestRun4()
+    [Test]
+    public async void TransferTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -120,8 +119,8 @@ public class TransferTest
     }
 
     // should succeed burning tokens
-    [UnityTest]
-    public async UniTask TransferTestRun5()
+    [Test]
+    public async void TransferTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);

@@ -1,15 +1,13 @@
 using System;
-using System.Collections;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 using Chromia.Postchain.Client;
 using Chromia.Postchain.Client.ASN1;
 
 public class Asn1IntegerTest
 {
-    [UnityTest]
-    public IEnumerator IntegerTest()
+    [Test]
+    public void IntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -19,11 +17,11 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
-    
-    [UnityTest]
-    public IEnumerator NegativeIntegerTest()
+
+    [Test]
+    public void NegativeIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -33,11 +31,11 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
-    
-    [UnityTest]
-    public IEnumerator ZeroIntegerTest()
+
+    [Test]
+    public void ZeroIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -47,11 +45,11 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
-    
-    [UnityTest]
-    public IEnumerator MaxIntegerTest()
+
+    [Test]
+    public void MaxIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -61,11 +59,11 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
-    
-    [UnityTest]
-    public IEnumerator MinIntegerTest()
+
+    [Test]
+    public void MinIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -75,6 +73,6 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
+
     }
 }

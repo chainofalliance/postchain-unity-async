@@ -1,19 +1,18 @@
 using System;
 using System.Collections;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 using Chromia.Postchain.Client;
 using Chromia.Postchain.Client.ASN1;
 
 public class Asn1ByteArrayTest
 {
-    [UnityTest]
+    [Test]
     public IEnumerator ByteArrayTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.ByteArray;
-        val.ByteArray = new byte[]{0xaf, 0xfe, 0xca, 0xfe};
+        val.ByteArray = new byte[] { 0xaf, 0xfe, 0xca, 0xfe };
 
         var decoded = GTXValue.Decode(new AsnReader(val.Encode()));
         Assert.AreEqual(val.Choice, decoded.Choice);
@@ -22,12 +21,12 @@ public class Asn1ByteArrayTest
         yield return null;
     }
 
-    [UnityTest]
+    [Test]
     public IEnumerator EmptyByteArrayTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.ByteArray;
-        val.ByteArray = new byte[]{};
+        val.ByteArray = new byte[] { };
 
         var decoded = GTXValue.Decode(new AsnReader(val.Encode()));
         Assert.AreEqual(val.Choice, decoded.Choice);
@@ -35,8 +34,8 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val, decoded);
         yield return null;
     }
-    
-    [UnityTest]
+
+    [Test]
     public IEnumerator IntegerTest()
     {
         var val = new GTXValue();
@@ -49,8 +48,8 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val, decoded);
         yield return null;
     }
-    
-    [UnityTest]
+
+    [Test]
     public IEnumerator NegativeIntegerTest()
     {
         var val = new GTXValue();
@@ -63,8 +62,8 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val, decoded);
         yield return null;
     }
-    
-    [UnityTest]
+
+    [Test]
     public IEnumerator ZeroIntegerTest()
     {
         var val = new GTXValue();
@@ -77,8 +76,8 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val, decoded);
         yield return null;
     }
-    
-    [UnityTest]
+
+    [Test]
     public IEnumerator MaxIntegerTest()
     {
         var val = new GTXValue();
@@ -91,8 +90,8 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val, decoded);
         yield return null;
     }
-    
-    [UnityTest]
+
+    [Test]
     public IEnumerator MinIntegerTest()
     {
         var val = new GTXValue();

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using UnityEngine.TestTools;
 using Chromia.Postchain.Client;
 using Chromia.Postchain.Ft3;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 using Cysharp.Threading.Tasks;
@@ -24,7 +24,7 @@ public class AccountTest
     }
 
     // Correctly creates keypair
-    [UnityTest]
+    [Test]
     public void AccountTest1()
     {
         var keyPair = PostchainUtil.MakeKeyPair();
@@ -35,8 +35,8 @@ public class AccountTest
     }
 
     // Register account on blockchain
-    [UnityTest]
-    public async UniTask AccountTest2()
+    [Test]
+    public async Task AccountTest2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -47,9 +47,10 @@ public class AccountTest
     }
 
     // can add new auth descriptor if has account edit rights
-    [UnityTest]
-    public async UniTask AccountTest3()
+    [Test]
+    public async Task AccountTest3()
     {
+        UnityEngine.Debug.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
@@ -69,12 +70,14 @@ public class AccountTest
             )
         );
 
+        UnityEngine.Debug.Log("!!!!!!!!HEllloo!!!!!!!!!!!!!");
+        UnityEngine.Debug.Log(res.Content.AuthDescriptor.Count);
         Assert.AreEqual(2, res.Content.AuthDescriptor.Count);
     }
 
     // cannot add new auth descriptor if account doesn't have account edit rights
-    [UnityTest]
-    public async UniTask AccountTest4()
+    [Test]
+    public async Task AccountTest4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -100,8 +103,8 @@ public class AccountTest
     }
 
     // should create new multisig account
-    [UnityTest]
-    public async UniTask AccountTest5()
+    [Test]
+    public async Task AccountTest5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
@@ -126,8 +129,8 @@ public class AccountTest
     }
 
     // should update account if 2 signatures provided
-    [UnityTest]
-    public async UniTask AccountTest6()
+    [Test]
+    public async Task AccountTest6()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
@@ -173,8 +176,8 @@ public class AccountTest
     }
 
     // should fail if only one signature provided
-    [UnityTest]
-    public async UniTask AccountTest7()
+    [Test]
+    public async Task AccountTest7()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
@@ -213,8 +216,8 @@ public class AccountTest
     }
 
     // should be returned when queried by participant id
-    [UnityTest]
-    public async UniTask AccountTest8()
+    [Test]
+    public async Task AccountTest8()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -235,8 +238,8 @@ public class AccountTest
     }
 
     // should return two accounts when account is participant of two accounts
-    [UnityTest]
-    public async UniTask AccountTest9()
+    [Test]
+    public async Task AccountTest9()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
@@ -264,8 +267,8 @@ public class AccountTest
     }
 
     // should return account by id
-    [UnityTest]
-    public async UniTask AccountTest10()
+    [Test]
+    public async Task AccountTest10()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -280,8 +283,8 @@ public class AccountTest
     }
 
     // should have only one auth descriptor after calling deleteAllAuthDescriptorsExclude
-    [UnityTest]
-    public async UniTask AccountTest11()
+    [Test]
+    public async Task AccountTest11()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
@@ -303,8 +306,8 @@ public class AccountTest
     }
 
     // should be able to register account by directly calling \'register_account\' operation
-    [UnityTest]
-    public async UniTask AccountTest12()
+    [Test]
+    public async Task AccountTest12()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -320,8 +323,8 @@ public class AccountTest
     }
 
     // should be possible for auth descriptor to delete itself without admin flag
-    [UnityTest]
-    public async UniTask AccountTest13()
+    [Test]
+    public async Task AccountTest13()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
@@ -355,8 +358,8 @@ public class AccountTest
     }
 
     // shouldn't be possible for auth descriptor to delete other auth descriptor without admin flag
-    [UnityTest]
-    public async UniTask AccountTest15()
+    [Test]
+    public async Task AccountTest15()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();

@@ -1,4 +1,3 @@
-using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System.Linq;
@@ -8,8 +7,8 @@ using Cysharp.Threading.Tasks;
 public class AssetTest
 {
     // should be successfully registered
-    [UnityTest]
-    public async UniTask AssetTestRun1()
+    [Test]
+    public async void AssetTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -24,8 +23,8 @@ public class AssetTest
     }
 
     // should be returned when queried by name
-    [UnityTest]
-    public async UniTask AssetTestRun2()
+    [Test]
+    public async void AssetTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -47,8 +46,8 @@ public class AssetTest
     }
 
     // should be returned when queried by id
-    [UnityTest]
-    public async UniTask AssetTestRun3()
+    [Test]
+    public async void AssetTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -71,8 +70,8 @@ public class AssetTest
     }
 
     // should return all the assets registered
-    [UnityTest]
-    public async UniTask AssetTestRun4()
+    [Test]
+    public async void AssetTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset1 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);

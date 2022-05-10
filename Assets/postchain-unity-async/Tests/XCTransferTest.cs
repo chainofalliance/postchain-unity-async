@@ -1,14 +1,13 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
 public class XCTransferTest
 {
     // Cross-chain transfer
-    [UnityTest]
-    public async UniTask XcTransferTestRun1()
+    [Test]
+    public async void XcTransferTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 

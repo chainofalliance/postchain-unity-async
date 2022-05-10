@@ -1,561 +1,512 @@
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System;
 
+using Chromia.Postchain.Client;
+using Cysharp.Threading.Tasks;
+
 public class AuthDescriptorRuleTest
 {
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
-
-    private IEnumerator AddAuthDescriptorTo(Account account, User adminUser, User user, Action onSuccess)
+    private UniTask<PostchainResponse<string>> AddAuthDescriptorTo(Account account, User adminUser, User user, Blockchain blockchain)
     {
         var signers = new List<byte[]>();
         signers.AddRange(adminUser.AuthDescriptor.Signers);
         signers.AddRange(user.AuthDescriptor.Signers);
 
-        yield return blockchain.TransactionBuilder()
+        return blockchain.TransactionBuilder()
             .Add(AccountOperations.AddAuthDescriptor(account.Id, adminUser.AuthDescriptor.ID, user.AuthDescriptor))
-            .Build(signers.ToArray(), DefaultErrorHandler)
+            .Build(signers.ToArray())
             .Sign(adminUser.KeyPair)
             .Sign(user.KeyPair)
-            .PostAndWait(onSuccess)
+            .PostAndWait()
         ;
     }
 
-    public IEnumerator SourceAccount(Blockchain blockchain, User user, Asset asset, Action<Account> onSuccess)
+    public UniTask<PostchainResponse<Account>> SourceAccount(Blockchain blockchain, User user, Asset asset)
     {
         AccountBuilder builder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         builder.WithBalance(asset, 200);
         builder.WithPoints(5);
-        yield return builder.Build(onSuccess);
+        return builder.Build();
     }
 
-    public IEnumerator DestinationAccount(Blockchain blockchain, Action<Account> onSuccess)
+    public UniTask<PostchainResponse<Account>> DestinationAccount(Blockchain blockchain)
     {
         AccountBuilder builder = AccountBuilder.CreateAccountBuilder(blockchain);
-        yield return builder.Build(onSuccess);
+        return builder.Build();
     }
 
-    public IEnumerator CreateAsset(Blockchain blockchain, Action<Asset> onSuccess)
+    public UniTask<PostchainResponse<Asset>> CreateAsset(Blockchain blockchain)
     {
-        yield return Asset.Register(
+        return Asset.Register(
             TestUtil.GenerateAssetName(),
             TestUtil.GenerateId(),
-            blockchain, onSuccess,
-            DefaultErrorHandler
+            blockchain
         );
     }
 
     // should succeed when calling operations, number of times less than or equal to value set by operation count rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun1()
+    public async UniTask AuthDescriptorRuleTestRun1()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(2));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+        var account2 = await DestinationAccount(blockchain);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var res1 = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res1.Error);
 
-        successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 20, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var res2 = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 20);
+        Assert.False(res2.Error);
     }
 
     // should fail when calling operations, number of times more than value set by operation count rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun2()
+    public async UniTask AuthDescriptorRuleTestRun2()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.OperationCount().LessThan(2));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+        var account2 = await DestinationAccount(blockchain);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
 
-        successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 20, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 20);
+        Assert.True(res.Error);
     }
 
     // should fail when current time is greater than time defined by 'less than' block time rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun3()
+    public async UniTask AuthDescriptorRuleTestRun3()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockTime().LessThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+        var account2 = await DestinationAccount(blockchain);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should succeed when current time is less than time defined by 'less than' block time rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun4()
+    public async UniTask AuthDescriptorRuleTestRun4()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await CreateAsset(blockchain);
         User user = TestUser.SingleSig(Rules.BlockTime().LessThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+        var account2 = await DestinationAccount(blockchain);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should succeed when current block height is less than value defined by 'less than' block height rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun5()
+    public async UniTask AuthDescriptorRuleTestRun5()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockHeight().LessThan(10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should fail when current block height is greater than value defined by 'less than' block height rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun6()
+    public async UniTask AuthDescriptorRuleTestRun6()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockHeight().LessThan(1));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+        var account2 = await DestinationAccount(blockchain);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should fail if operation is executed before timestamp defined by 'greater than' block time rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun7()
+    public async UniTask AuthDescriptorRuleTestRun7()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockTime().GreaterThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+        var account2 = await DestinationAccount(blockchain);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should succeed if operation is executed after timestamp defined by 'greater than' block time rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun8()
+    public async UniTask AuthDescriptorRuleTestRun8()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockTime().GreaterThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should fail if operation is executed before block defined by 'greater than' block height rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun9()
+    public async UniTask AuthDescriptorRuleTestRun9()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockHeight().GreaterThan(10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should succeed if operation is executed after block defined by 'greater than' block height rule
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun10()
+    public async UniTask AuthDescriptorRuleTestRun10()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockHeight().GreaterThan(1));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should be able to create complex rules
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun11()
+    public async UniTask AuthDescriptorRuleTestRun11()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockHeight().GreaterThan(1).And().BlockHeight().LessThan(10000));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should fail if block heights defined by 'greater than' and 'less than' block height rules are less than current block height
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun12()
+    public async UniTask AuthDescriptorRuleTestRun12()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(Rules.BlockHeight().GreaterThan(1).And().BlockHeight().LessThan(10));
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should fail if block times defined by 'greater than' and 'less than' block time rules are in the past
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun13()
+    public async UniTask AuthDescriptorRuleTestRun13()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(
             Rules.BlockTime().GreaterThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 20000).
             And().
             BlockTime().LessThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 10000)
             );
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should succeed if current time is within period defined by 'greater than' and 'less than' block time rules
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun14()
+    public async UniTask AuthDescriptorRuleTestRun14()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user = TestUser.SingleSig(
             Rules.BlockTime().GreaterThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 10000).
             And().
             BlockTime().LessThan(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 10000)
             );
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return DestinationAccount(blockchain, (Account _account) => account2 = _account);
 
-        bool successful = false;
-        yield return account1.Transfer(account2.GetID(), asset.Id, 10, () => successful = true, DefaultErrorHandler);
-        Assert.True(successful);
+        var account1 = await SourceAccount(blockchain, user, asset.Content);
+
+        var account2 = await DestinationAccount(blockchain);
+
+
+        var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
+        Assert.False(res.Error);
     }
 
     // should succeed if current time is within period defined by 'greater than' and 'less than' block time rules
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun15()
+    public async UniTask AuthDescriptorRuleTestRun15()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig(Rules.OperationCount().LessThan(2));
 
-        Account srcAccount1 = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => srcAccount1 = _account);
-        Account destAccount = null;
-        yield return DestinationAccount(blockchain, (Account _account) => destAccount = _account);
+        var srcAccount1 = await SourceAccount(blockchain, user1, asset.Content);
+        var destAccount = await DestinationAccount(blockchain);
 
         // add expiring auth descriptor to the account
-        yield return srcAccount1.AddAuthDescriptor(user2.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.AddAuthDescriptor(user2.AuthDescriptor);
 
         // get the same account, but initialized with user2
         // object which contains expiring auth descriptor
-        Account srcAccount2 = null;
-        yield return blockchain.NewSession(user2).GetAccountById(srcAccount1.GetID(), (Account _account) => srcAccount2 = _account, DefaultErrorHandler);
+        var srcAccount2 = await blockchain.NewSession(user2).GetAccountById(srcAccount1.Content.GetID());
 
-        yield return srcAccount2.Transfer(destAccount.GetID(), asset.Id, 10, EmptyCallback, DefaultErrorHandler);
+        await srcAccount2.Content.Transfer(destAccount.Content.GetID(), asset.Content.Id, 10);
 
         // account descriptor used by user2 object has expired.
         // this operation call will delete it.
         // any other operation, which calls require_auth internally
         // would also delete expired auth descriptor.
-        yield return srcAccount1.Transfer(destAccount.GetID(), asset.Id, 30, EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.Transfer(destAccount.Content.GetID(), asset.Content.Id, 30);
 
-        yield return srcAccount1.Sync(EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.Sync();
 
-        Assert.AreEqual(1, srcAccount1.AuthDescriptor.Count);
+        Assert.AreEqual(1, srcAccount1.Content.AuthDescriptor.Count);
     }
 
     // shouldn't delete non-expired auth descriptor
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun16()
+    public async UniTask AuthDescriptorRuleTestRun16()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig(Rules.OperationCount().LessThan(10));
 
-        Account srcAccount1 = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => srcAccount1 = _account);
-        Account destAccount = null;
-        yield return DestinationAccount(blockchain, (Account _account) => destAccount = _account);
+        var srcAccount1 = await SourceAccount(blockchain, user1, asset.Content);
+        var destAccount = await DestinationAccount(blockchain);
 
         // add expiring auth descriptor to the account
-        yield return AddAuthDescriptorTo(srcAccount1, user1, user2, EmptyCallback);
+        await AddAuthDescriptorTo(srcAccount1.Content, user1, user2, blockchain);
 
         // get the same account, but initialized with user2
         // object which contains expiring auth descriptor
-        Account srcAccount2 = null;
-        yield return blockchain.NewSession(user2).GetAccountById(srcAccount1.GetID(), (Account _account) => srcAccount2 = _account, DefaultErrorHandler);
+        var srcAccount2 = await blockchain.NewSession(user2).GetAccountById(srcAccount1.Content.GetID());
 
         // perform transfer with expiring auth descriptor.
         // auth descriptor didn't expire, because it's only used 1 out of 10 times.
-        yield return srcAccount2.Transfer(destAccount.GetID(), asset.Id, 10, EmptyCallback, DefaultErrorHandler);
+        await srcAccount2.Content.Transfer(destAccount.Content.GetID(), asset.Content.Id, 10);
 
         // perform transfer using auth descriptor without rules
-        yield return srcAccount1.Transfer(destAccount.GetID(), asset.Id, 10, EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.Transfer(destAccount.Content.GetID(), asset.Content.Id, 10);
 
-        yield return srcAccount1.Sync(EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.Sync();
 
-        Assert.AreEqual(2, srcAccount1.AuthDescriptor.Count);
+        Assert.AreEqual(2, srcAccount1.Content.AuthDescriptor.Count);
     }
 
     // should delete only expired auth descriptor if multiple expiring descriptors exist
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun17()
+    public async UniTask AuthDescriptorRuleTestRun17()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(1));
         User user3 = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(1));
 
-        Account srcAccount1 = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => srcAccount1 = _account);
-        Account destAccount = null;
-        yield return DestinationAccount(blockchain, (Account _account) => destAccount = _account);
 
-        yield return AddAuthDescriptorTo(srcAccount1, user1, user2, EmptyCallback);
-        yield return AddAuthDescriptorTo(srcAccount1, user1, user3, EmptyCallback);
+        var srcAccount1 = await SourceAccount(blockchain, user1, asset.Content);
 
-        Account srcAccount2 = null;
-        yield return blockchain.NewSession(user2).GetAccountById(srcAccount1.GetID(), (Account _account) => srcAccount2 = _account, DefaultErrorHandler);
+        var destAccount = await DestinationAccount(blockchain);
 
-        yield return srcAccount2.Transfer(destAccount.GetID(), asset.Id, 50, EmptyCallback, DefaultErrorHandler);
+        await AddAuthDescriptorTo(srcAccount1.Content, user1, user2, blockchain);
+        await AddAuthDescriptorTo(srcAccount1.Content, user1, user3, blockchain);
+
+        var srcAccount2 = await blockchain.NewSession(user2).GetAccountById(srcAccount1.Content.GetID());
+
+        await srcAccount2.Content.Transfer(destAccount.Content.GetID(), asset.Content.Id, 50);
 
         // this call will trigger deletion of expired auth descriptor (attached to user2)
-        yield return srcAccount1.Transfer(destAccount.GetID(), asset.Id, 100, EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.Transfer(destAccount.Content.GetID(), asset.Content.Id, 100);
 
-        yield return srcAccount1.Sync(EmptyCallback, DefaultErrorHandler);
+        await srcAccount1.Content.Sync();
 
-        Assert.AreEqual(2, srcAccount1.AuthDescriptor.Count);
+        Assert.AreEqual(2, srcAccount1.Content.AuthDescriptor.Count);
     }
 
     // should add auth descriptors
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun18()
+    public async UniTask AuthDescriptorRuleTestRun18()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(1));
         User user3 = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(1));
 
-        Account account = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => account = _account);
+        var account = await SourceAccount(blockchain, user1, asset.Content);
 
-        yield return AddAuthDescriptorTo(account, user1, user2, EmptyCallback);
-        yield return AddAuthDescriptorTo(account, user1, user3, EmptyCallback);
+        await AddAuthDescriptorTo(account.Content, user1, user2, blockchain);
+        await AddAuthDescriptorTo(account.Content, user1, user3, blockchain);
 
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
+        await account.Content.Sync();
 
-        Assert.AreEqual(3, account.AuthDescriptor.Count);
+        Assert.AreEqual(3, account.Content.AuthDescriptor.Count);
     }
 
     // should delete auth descriptors
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun19()
+    public async UniTask AuthDescriptorRuleTestRun19()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(1));
         User user3 = TestUser.SingleSig(Rules.OperationCount().LessOrEqual(1));
 
-        Account account = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => account = _account);
+        var account = await SourceAccount(blockchain, user1, asset.Content);
 
-        yield return account.AddAuthDescriptor(user2.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
-        yield return account.AddAuthDescriptor(user3.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
+        await account.Content.AddAuthDescriptor(user2.AuthDescriptor);
+        await account.Content.AddAuthDescriptor(user3.AuthDescriptor);
 
-        yield return account.DeleteAllAuthDescriptorsExclude(user1.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
-        Assert.AreEqual(1, account.AuthDescriptor.Count);
+        await account.Content.DeleteAllAuthDescriptorsExclude(user1.AuthDescriptor);
+        Assert.AreEqual(1, account.Content.AuthDescriptor.Count);
 
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
-
-        Assert.AreEqual(1, account.AuthDescriptor.Count);
+        await account.Content.Sync();
+        Assert.AreEqual(1, account.Content.AuthDescriptor.Count);
     }
 
     // should fail when deleting an auth descriptor which is not owned by the account
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun20()
+    public async UniTask AuthDescriptorRuleTestRun20()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
 
-        Account account1 = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => account1 = _account);
-        Account account2 = null;
-        yield return SourceAccount(blockchain, user2, asset, (Account _account) => account2 = _account);
+        var account1 = await SourceAccount(blockchain, user1, asset.Content);
+        var account2 = await SourceAccount(blockchain, user2, asset.Content);
 
-        bool successful = false;
-        yield return account1.DeleteAuthDescriptor(user2.AuthDescriptor, () => successful = true, DefaultErrorHandler);
-        Assert.False(successful);
+        var res = await account1.Content.DeleteAuthDescriptor(user2.AuthDescriptor);
+        Assert.True(res.Error);
     }
 
     // should delete auth descriptor
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun21()
+    public async UniTask AuthDescriptorRuleTestRun21()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
 
-        Account account = null;
-        yield return SourceAccount(blockchain, user1, asset, (Account _account) => account = _account);
-        yield return account.AddAuthDescriptor(user2.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
-        yield return account.DeleteAuthDescriptor(user2.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
 
-        Assert.AreEqual(1, account.AuthDescriptor.Count);
+        var account = await SourceAccount(blockchain, user1, asset.Content);
+        await account.Content.AddAuthDescriptor(user2.AuthDescriptor);
+        await account.Content.DeleteAuthDescriptor(user2.AuthDescriptor);
+
+        Assert.AreEqual(1, account.Content.AuthDescriptor.Count);
     }
 
     // Should be able to create same rules with different value
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun22()
+    public async UniTask AuthDescriptorRuleTestRun22()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         var rules = Rules.BlockHeight().GreaterThan(1).And().BlockHeight().GreaterThan(10000).And().BlockTime().GreaterOrEqual(122222999);
         User user = TestUser.SingleSig(rules);
 
-        Account account = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account = _account);
+        var account = await SourceAccount(blockchain, user, asset.Content);
 
-        Assert.AreEqual(1, account.AuthDescriptor.Count);
+        Assert.AreEqual(1, account.Content.AuthDescriptor.Count);
     }
 
     // shouldn't be able to create too many rules
     [UnityTest]
-    public IEnumerator AuthDescriptorRuleTestRun23()
+    public async UniTask AuthDescriptorRuleTestRun23()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return CreateAsset(blockchain, (Asset _asset) => asset = _asset);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await CreateAsset(blockchain);
 
         var rules = Rules.BlockHeight().GreaterThan(1).And().BlockHeight().GreaterThan(10000).And().BlockTime().GreaterOrEqual(122222999);
 
@@ -566,9 +517,7 @@ public class AuthDescriptorRuleTest
 
         User user = TestUser.SingleSig(rules);
 
-        Account account = null;
-        yield return SourceAccount(blockchain, user, asset, (Account _account) => account = _account);
-
+        var account = await SourceAccount(blockchain, user, asset.Content);
         Assert.AreEqual(null, account);
     }
 }

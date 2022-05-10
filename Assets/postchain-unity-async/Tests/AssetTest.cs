@@ -1,108 +1,93 @@
-using System.Collections.Generic;
-using System.Collections;
 using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System.Linq;
 
+using Cysharp.Threading.Tasks;
+
 public class AssetTest
 {
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
-
     // should be successfully registered
     [UnityTest]
-    public IEnumerator AssetTestRun1()
+    public async UniTask AssetTestRun1()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
-        Asset asset = null;
-        yield return Asset.Register(
+        var asset = await Asset.Register(
             TestUtil.GenerateAssetName(),
             TestUtil.GenerateId(),
-            blockchain,
-            (Asset _asset) => asset = _asset,
-            DefaultErrorHandler
+            blockchain
         );
 
-        Assert.NotNull(asset);
+        Assert.False(asset.Error);
+        Assert.NotNull(asset.Content);
     }
 
     // should be returned when queried by name
     [UnityTest]
-    public IEnumerator AssetTestRun2()
+    public async UniTask AssetTestRun2()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
         var assetName = TestUtil.GenerateAssetName();
 
-        Asset asset = null;
-        yield return Asset.Register(
+        var asset = await Asset.Register(
             assetName,
             TestUtil.GenerateId(),
-            blockchain,
-            (Asset _asset) => asset = _asset,
-            DefaultErrorHandler
+            blockchain
         );
 
-        Asset[] assets = null;
-        yield return Asset.GetByName(assetName, blockchain, (Asset[] _assets) => assets = _assets, DefaultErrorHandler);
+        var assets = await Asset.GetByName(assetName, blockchain);
 
-        Assert.AreEqual(1, assets.Length);
-        Assert.AreEqual(asset.Name, assets[0].Name);
+        Assert.False(asset.Error);
+        Assert.False(assets.Error);
+
+        Assert.AreEqual(1, assets.Content.Length);
+        Assert.AreEqual(asset.Content.Name, assets.Content[0].Name);
     }
 
     // should be returned when queried by id
     [UnityTest]
-    public IEnumerator AssetTestRun3()
+    public async UniTask AssetTestRun3()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
         var assetName = TestUtil.GenerateAssetName();
         var testChainId = TestUtil.GenerateId();
 
-        Asset asset = null;
-        yield return Asset.Register(
+        var asset = await Asset.Register(
             assetName,
             testChainId,
-            blockchain,
-            (Asset _asset) => asset = _asset,
-            DefaultErrorHandler
+            blockchain
         );
+        Assert.False(asset.Error);
 
-        Asset expectedAsset = null;
-        yield return Asset.GetById(asset.Id, blockchain, (Asset _asset) => expectedAsset = _asset, DefaultErrorHandler);
+        var expectedAsset = await Asset.GetById(asset.Content.Id, blockchain);
+        Assert.False(expectedAsset.Error);
 
-        Assert.AreEqual(assetName, expectedAsset.Name);
-        Assert.AreEqual(asset.Id.ToUpper(), expectedAsset.Id.ToUpper());
-        Assert.AreEqual(testChainId.ToUpper(), expectedAsset.IssuingChainRid.ToUpper());
+        Assert.AreEqual(assetName, expectedAsset.Content.Name);
+        Assert.AreEqual(asset.Content.Id.ToUpper(), expectedAsset.Content.Id.ToUpper());
+        Assert.AreEqual(testChainId.ToUpper(), expectedAsset.Content.IssuingChainRid.ToUpper());
     }
 
     // should return all the assets registered
     [UnityTest]
-    public IEnumerator AssetTestRun4()
+    public async UniTask AssetTestRun4()
     {
-        yield return SetupBlockchain();
-        Asset asset1 = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset1 = _asset, DefaultErrorHandler);
-        Asset asset2 = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset2 = _asset, DefaultErrorHandler);
-        Asset asset3 = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset3 = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset1 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
+        var asset2 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
+        var asset3 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
+        var expectedAsset = await Asset.GetAssets(blockchain);
 
-        Asset[] expectedAsset = null;
+        Assert.False(asset1.Error);
+        Assert.False(asset2.Error);
+        Assert.False(asset3.Error);
+        Assert.False(expectedAsset.Error);
 
-        yield return Asset.GetAssets(blockchain, (Asset[] _assets) => expectedAsset = _assets, DefaultErrorHandler);
-        var assetNames = expectedAsset.Select(elem => elem.Name).ToList();
-        Assert.Contains(asset1.Name, assetNames);
-        Assert.Contains(asset2.Name, assetNames);
-        Assert.Contains(asset3.Name, assetNames);
+        var assetNames = expectedAsset.Content.Select(elem => elem.Name).ToList();
+        Assert.Contains(asset1.Content.Name, assetNames);
+        Assert.Contains(asset2.Content.Name, assetNames);
+        Assert.Contains(asset3.Content.Name, assetNames);
     }
 }

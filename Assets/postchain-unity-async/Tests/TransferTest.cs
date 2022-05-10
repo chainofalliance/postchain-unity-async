@@ -1,110 +1,87 @@
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
+using Cysharp.Threading.Tasks;
+
 public class TransferTest
 {
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
-
     // should succeed when balance is higher than amount to transfer
     [UnityTest]
-    public IEnumerator TransferTestRun1()
+    public async UniTask TransferTestRun1()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
 
         User user = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        accountBuilder.WithBalance(asset, 200);
+        accountBuilder.WithBalance(asset.Content, 200);
         accountBuilder.WithPoints(1);
-        Account account1 = null;
-        yield return accountBuilder.Build((Account _account) => account1 = _account);
+        var account1 = await accountBuilder.Build();
 
         AccountBuilder accountBuilder2 = AccountBuilder.CreateAccountBuilder(blockchain);
-        Account account2 = null;
-        yield return accountBuilder2.Build((Account _account) => account2 = _account);
+        var account2 = await accountBuilder2.Build();
 
-        yield return account1.Transfer(account2.Id, asset.Id, 10, EmptyCallback, DefaultErrorHandler);
+        await account1.Content.Transfer(account2.Content.Id, asset.Content.Id, 10);
 
-        AssetBalance assetBalance1 = null;
-        yield return AssetBalance.GetByAccountAndAssetId(account1.Id, asset.Id, blockchain, (AssetBalance balance) => assetBalance1 = balance, DefaultErrorHandler);
-        AssetBalance assetBalance2 = null;
-        yield return AssetBalance.GetByAccountAndAssetId(account2.Id, asset.Id, blockchain, (AssetBalance balance) => assetBalance2 = balance, DefaultErrorHandler);
+        var assetBalance1 = await AssetBalance.GetByAccountAndAssetId(account1.Content.Id, asset.Content.Id, blockchain);
+        var assetBalance2 = await AssetBalance.GetByAccountAndAssetId(account2.Content.Id, asset.Content.Id, blockchain);
 
-        Assert.AreEqual(190, assetBalance1.Amount);
-        Assert.AreEqual(10, assetBalance2.Amount);
+        Assert.AreEqual(190, assetBalance1.Content.Amount);
+        Assert.AreEqual(10, assetBalance2.Content.Amount);
     }
 
     // should fail when balance is lower than amount to transfer
     [UnityTest]
-    public IEnumerator TransferTestRun2()
+    public async UniTask TransferTestRun2()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
         User user = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        accountBuilder.WithBalance(asset, 5);
-        Account account1 = null;
-        yield return accountBuilder.Build((Account _account) => account1 = _account);
+        accountBuilder.WithBalance(asset.Content, 5);
+        var account1 = await accountBuilder.Build();
 
         AccountBuilder accountBuilder2 = AccountBuilder.CreateAccountBuilder(blockchain);
-        Account account2 = null;
-        yield return accountBuilder2.Build((Account _account) => account2 = _account);
+        var account2 = await accountBuilder2.Build();
 
-        bool successfully = false;
-        yield return account1.Transfer(account2.Id, asset.Id, 10, () => successfully = true, DefaultErrorHandler);
-        Assert.False(successfully);
+        var res = await account1.Content.Transfer(account2.Content.Id, asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should fail if auth descriptor doesn't have transfer rights
     [UnityTest]
-    public IEnumerator TransferTestRun3()
+    public async UniTask TransferTestRun3()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
         User user = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithAuthFlags(new List<FlagsType>() { FlagsType.Account });
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        accountBuilder.WithBalance(asset, 200);
+        accountBuilder.WithBalance(asset.Content, 200);
         accountBuilder.WithPoints(1);
-        Account account1 = null;
-        yield return accountBuilder.Build((Account _account) => account1 = _account);
+        var account1 = await accountBuilder.Build();
 
         AccountBuilder accountBuilder2 = AccountBuilder.CreateAccountBuilder(blockchain);
-        Account account2 = null;
-        yield return accountBuilder2.Build((Account _account) => account2 = _account);
+        var account2 = await accountBuilder2.Build();
 
-        bool successfully = false;
-        yield return account1.Transfer(account2.Id, asset.Id, 10, () => successfully = true, DefaultErrorHandler);
-        Assert.False(successfully);
+        var res = await account1.Content.Transfer(account2.Content.Id, asset.Content.Id, 10);
+        Assert.True(res.Error);
     }
 
     // should succeed if transferring tokens to a multisig account
     [UnityTest]
-    public IEnumerator TransferTestRun4()
+    public async UniTask TransferTestRun4()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
 
         User user = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
@@ -112,10 +89,9 @@ public class TransferTest
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        accountBuilder.WithBalance(asset, 200);
+        accountBuilder.WithBalance(asset.Content, 200);
         accountBuilder.WithPoints(0);
-        Account account1 = null;
-        yield return accountBuilder.Build((Account _account) => account1 = _account);
+        var account1 = await accountBuilder.Build();
 
 
         AuthDescriptor multiSig = new MultiSignatureAuthDescriptor(
@@ -126,43 +102,39 @@ public class TransferTest
             new List<FlagsType>() { FlagsType.Account, FlagsType.Transfer }.ToArray()
         );
 
-        yield return blockchain.TransactionBuilder()
+        await blockchain.TransactionBuilder()
             .Add(AccountDevOperations.Register(multiSig))
-            .Build(multiSig.Signers.ToArray(), DefaultErrorHandler)
+            .Build(multiSig.Signers.ToArray())
             .Sign(user2.KeyPair)
             .Sign(user3.KeyPair)
-            .PostAndWait(EmptyCallback);
+            .PostAndWait();
 
 
-        yield return account1.Transfer(multiSig.ID, asset.Id, 10, EmptyCallback, DefaultErrorHandler);
+        await account1.Content.Transfer(multiSig.ID, asset.Content.Id, 10);
 
-        AssetBalance assetBalance1 = null;
-        yield return AssetBalance.GetByAccountAndAssetId(account1.Id, asset.Id, blockchain, (AssetBalance balance) => assetBalance1 = balance, DefaultErrorHandler);
-        AssetBalance assetBalance2 = null;
-        yield return AssetBalance.GetByAccountAndAssetId(multiSig.ID, asset.Id, blockchain, (AssetBalance balance) => assetBalance2 = balance, DefaultErrorHandler);
+        var assetBalance1 = await AssetBalance.GetByAccountAndAssetId(account1.Content.Id, asset.Content.Id, blockchain);
+        var assetBalance2 = await AssetBalance.GetByAccountAndAssetId(multiSig.ID, asset.Content.Id, blockchain);
 
-        Assert.AreEqual(190, assetBalance1.Amount);
-        Assert.AreEqual(10, assetBalance2.Amount);
+        Assert.AreEqual(190, assetBalance1.Content.Amount);
+        Assert.AreEqual(10, assetBalance2.Content.Amount);
     }
 
     // should succeed burning tokens
     [UnityTest]
-    public IEnumerator TransferTestRun5()
+    public async UniTask TransferTestRun5()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
         User user = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        accountBuilder.WithBalance(asset, 200);
+        accountBuilder.WithBalance(asset.Content, 200);
         accountBuilder.WithPoints(1);
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => account = _account);
+        var account = await accountBuilder.Build();
 
-        yield return account.BurnTokens(asset.Id, 10, EmptyCallback, DefaultErrorHandler);
-        AssetBalance assetBalance = account.GetAssetById(asset.Id);
+        await account.Content.BurnTokens(asset.Content.Id, 10);
+        var assetBalance = account.Content.GetAssetById(asset.Content.Id);
 
         Assert.AreEqual(190, assetBalance.Amount);
     }

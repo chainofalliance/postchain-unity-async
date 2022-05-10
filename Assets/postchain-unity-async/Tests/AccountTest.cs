@@ -1,118 +1,109 @@
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine.TestTools;
+using Chromia.Postchain.Client;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
-using System;
+
+using Cysharp.Threading.Tasks;
 
 public class AccountTest
 {
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
-
-    private IEnumerator AddAuthDescriptorTo(Account account, User adminUser, User user, Action onSuccess)
+    private UniTask<PostchainResponse<string>> AddAuthDescriptorTo(Account account, User adminUser, User user, Blockchain blockchain)
     {
         var signers = new List<byte[]>();
         signers.AddRange(adminUser.AuthDescriptor.Signers);
         signers.AddRange(user.AuthDescriptor.Signers);
 
-        yield return blockchain.TransactionBuilder()
+        return blockchain.TransactionBuilder()
             .Add(AccountOperations.AddAuthDescriptor(account.Id, adminUser.AuthDescriptor.ID, user.AuthDescriptor))
-            .Build(signers.ToArray(), DefaultErrorHandler)
+            .Build(signers.ToArray())
             .Sign(adminUser.KeyPair)
             .Sign(user.KeyPair)
-            .PostAndWait(onSuccess)
+            .PostAndWait()
         ;
     }
 
     // Correctly creates keypair
     [UnityTest]
-    public IEnumerator AccountTest1()
+    public void AccountTest1()
     {
-        var keyPair = Chromia.Postchain.Client.PostchainUtil.MakeKeyPair();
+        var keyPair = PostchainUtil.MakeKeyPair();
         var user = new KeyPair(Util.ByteArrayToString(keyPair["privKey"]));
 
         Assert.AreEqual(user.PrivKey, keyPair["privKey"]);
         Assert.AreEqual(user.PubKey, keyPair["pubKey"]);
-        yield return null;
     }
 
     // Register account on blockchain
     [UnityTest]
-    public IEnumerator AccountTest2()
+    public async UniTask AccountTest2()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
-        Account account = null;
-        yield return blockchain.RegisterAccount(user.AuthDescriptor, user, (Account _account) => account = _account, DefaultErrorHandler);
+        var res = await blockchain.RegisterAccount(user.AuthDescriptor, user);
 
-        Assert.NotNull(account);
+        Assert.IsFalse(res.Error);
+        Assert.NotNull(res.Content);
     }
 
     // can add new auth descriptor if has account edit rights
     [UnityTest]
-    public IEnumerator AccountTest3()
+    public async UniTask AccountTest3()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
         accountBuilder.WithPoints(1);
 
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => { account = _account; }, DefaultErrorHandler);
-        Assert.NotNull(account);
+        var res = await accountBuilder.Build();
 
-        yield return account.AddAuthDescriptor(
+        Assert.IsFalse(res.Error);
+        Assert.NotNull(res.Content);
+
+        await res.Content.AddAuthDescriptor(
             new SingleSignatureAuthDescriptor(
                     user.KeyPair.PubKey,
                     new List<FlagsType>() { FlagsType.Transfer }.ToArray()
-            ),
-            EmptyCallback, DefaultErrorHandler
+            )
         );
 
-        Assert.AreEqual(2, account.AuthDescriptor.Count);
+        Assert.AreEqual(2, res.Content.AuthDescriptor.Count);
     }
 
     // cannot add new auth descriptor if account doesn't have account edit rights
     [UnityTest]
-    public IEnumerator AccountTest4()
+    public async UniTask AccountTest4()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
-        Account account = null;
-        yield return Account.Register(
+        var res = await Account.Register(
             new SingleSignatureAuthDescriptor(
                 user.KeyPair.PubKey,
                 new List<FlagsType>() { FlagsType.Transfer }.ToArray()
             ),
-            blockchain.NewSession(user), (Account _account) => account = _account, DefaultErrorHandler
+            blockchain.NewSession(user)
         );
-        Assert.NotNull(account);
 
-        yield return account.AddAuthDescriptor(
+        Assert.IsFalse(res.Error);
+        Assert.NotNull(res.Content);
+
+        await res.Content.AddAuthDescriptor(
             new SingleSignatureAuthDescriptor(
                 user.KeyPair.PubKey,
                 new List<FlagsType>() { FlagsType.Transfer }.ToArray()
-            ), EmptyCallback, DefaultErrorHandler
+            )
         );
 
-        Assert.AreEqual(1, account.AuthDescriptor.Count);
+        Assert.AreEqual(1, res.Content.AuthDescriptor.Count);
     }
 
     // should create new multisig account
     [UnityTest]
-    public IEnumerator AccountTest5()
+    public async UniTask AccountTest5()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
 
@@ -124,22 +115,21 @@ public class AccountTest
                new List<FlagsType>() { FlagsType.Account, FlagsType.Transfer }.ToArray()
         );
 
-        var tx = blockchain.Connection.NewTransaction(multiSig.Signers.ToArray(), (string error) => { });
+        var tx = blockchain.Connection.NewTransaction(multiSig.Signers.ToArray());
         var op = AccountDevOperations.Register(multiSig);
         tx.AddOperation(op.Name, op.Args);
         tx.Sign(user1.KeyPair.PrivKey, user1.KeyPair.PubKey);
         tx.Sign(user2.KeyPair.PrivKey, user2.KeyPair.PubKey);
 
-        bool successfully = false;
-        yield return tx.PostAndWait(() => successfully = true);
-        Assert.True(successfully);
+        var res = await tx.PostAndWait();
+        Assert.False(res.Error);
     }
 
     // should update account if 2 signatures provided
     [UnityTest]
-    public IEnumerator AccountTest6()
+    public async UniTask AccountTest6()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
 
@@ -150,16 +140,18 @@ public class AccountTest
             2,
             new List<FlagsType>() { FlagsType.Account, FlagsType.Transfer }.ToArray()
         );
-        yield return blockchain.TransactionBuilder()
+        await blockchain.TransactionBuilder()
             .Add(AccountDevOperations.Register(multisig))
-            .Build(multisig.Signers.ToArray(), DefaultErrorHandler)
+            .Build(multisig.Signers.ToArray())
             .Sign(user1.KeyPair)
             .Sign(user2.KeyPair)
-            .PostAndWait(EmptyCallback)
+            .PostAndWait()
         ;
 
-        Account account = null;
-        yield return Account.GetById(multisig.ID, blockchain.NewSession(user1), (Account _account) => account = _account, DefaultErrorHandler);
+        var res = await Account.GetById(multisig.ID, blockchain.NewSession(user1));
+        Assert.IsFalse(res.Error);
+
+        var account = res.Content;
         Assert.NotNull(account);
 
         AuthDescriptor authDescriptor = new SingleSignatureAuthDescriptor(
@@ -167,24 +159,24 @@ public class AccountTest
                 new List<FlagsType>() { FlagsType.Transfer }.ToArray()
         );
 
-        yield return blockchain.TransactionBuilder()
+        var addAuthRes = await blockchain.TransactionBuilder()
             .Add(AccountOperations.AddAuthDescriptor(account.Id, account.AuthDescriptor[0].ID, authDescriptor))
-            .Build(account.AuthDescriptor[0].Signers.ToArray(), DefaultErrorHandler)
+            .Build(account.AuthDescriptor[0].Signers.ToArray())
             .Sign(user1.KeyPair)
             .Sign(user2.KeyPair)
-            .PostAndWait(EmptyCallback)
+            .PostAndWait()
         ;
 
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
+        await account.Sync();
 
         Assert.AreEqual(2, account.AuthDescriptor.Count);
     }
 
     // should fail if only one signature provided
     [UnityTest]
-    public IEnumerator AccountTest7()
+    public async UniTask AccountTest7()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
 
@@ -196,107 +188,102 @@ public class AccountTest
                new List<FlagsType>() { FlagsType.Account, FlagsType.Transfer }.ToArray()
         );
 
-        var tx = blockchain.Connection.NewTransaction(multiSig.Signers.ToArray(), (string error) => { });
+        var tx = blockchain.Connection.NewTransaction(multiSig.Signers.ToArray());
         var op = AccountDevOperations.Register(multiSig);
         tx.AddOperation(op.Name, op.Args);
         tx.Sign(user1.KeyPair.PrivKey, user1.KeyPair.PubKey);
         tx.Sign(user2.KeyPair.PrivKey, user2.KeyPair.PubKey);
 
-        bool successfully = false;
-        yield return tx.PostAndWait(() => successfully = true);
-        Assert.True(successfully);
+        var res = await tx.PostAndWait();
+        Assert.False(res.Error);
 
-        Account account = null;
-        yield return blockchain.NewSession(user1).GetAccountById(multiSig.ID, (Account _account) => account = _account, DefaultErrorHandler);
-        Assert.NotNull(account);
+        var resAccount = await blockchain.NewSession(user1).GetAccountById(multiSig.ID);
+        Assert.False(resAccount.Error);
+        Assert.NotNull(resAccount.Content);
 
-        successfully = false;
-        yield return account.AddAuthDescriptor(
+        var resAddAuth = await resAccount.Content.AddAuthDescriptor(
             new SingleSignatureAuthDescriptor(
                 user1.KeyPair.PubKey,
                 new List<FlagsType>() { FlagsType.Transfer }.ToArray()
-            ), () => successfully = true, DefaultErrorHandler
+            )
         );
 
-        Assert.False(successfully);
-        Assert.AreEqual(1, account.AuthDescriptor.Count);
+        Assert.False(resAddAuth.Error);
+        Assert.AreEqual(1, resAccount.Content.AuthDescriptor.Count);
     }
 
     // should be returned when queried by participant id
     [UnityTest]
-    public IEnumerator AccountTest8()
+    public async UniTask AccountTest8()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
 
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => { account = _account; }, DefaultErrorHandler);
+        await accountBuilder.Build();
 
-        Account[] accounts = null;
-        yield return Account.GetByParticipantId(
+        var res = await Account.GetByParticipantId(
             Util.ByteArrayToString(user.KeyPair.PubKey),
-            blockchain.NewSession(user),
-            (Account[] _accounts) => { accounts = _accounts; },
-            DefaultErrorHandler
+            blockchain.NewSession(user)
         );
+
+        Assert.False(res.Error);
+        Account[] accounts = res.Content;
         Assert.AreEqual(1, accounts.Length);
         Assert.AreEqual(Util.ByteArrayToString(user.KeyPair.PubKey), Util.ByteArrayToString(accounts[0].AuthDescriptor[0].Signers[0]));
     }
 
     // should return two accounts when account is participant of two accounts
     [UnityTest]
-    public IEnumerator AccountTest9()
+    public async UniTask AccountTest9()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user1);
         accountBuilder.WithParticipants(new List<KeyPair>() { user1.KeyPair });
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => { account = _account; }, DefaultErrorHandler);
+        await accountBuilder.Build();
 
         AccountBuilder accountBuilder2 = AccountBuilder.CreateAccountBuilder(blockchain, user2);
         accountBuilder2.WithParticipants(new List<KeyPair>() { user2.KeyPair });
         accountBuilder2.WithPoints(1);
-        Account account2 = null;
-        yield return accountBuilder2.Build((Account _account) => { account2 = _account; }, DefaultErrorHandler);
+        var res = await accountBuilder2.Build();
+        var account2 = res.Content;
 
-        yield return AddAuthDescriptorTo(account2, user2, user1, EmptyCallback);
+        await AddAuthDescriptorTo(account2, user2, user1, blockchain);
 
-        Account[] accounts = null;
-        yield return Account.GetByParticipantId(
+        var qRes = await Account.GetByParticipantId(
             Util.ByteArrayToString(user1.KeyPair.PubKey),
-            blockchain.NewSession(user1),
-            (Account[] _accounts) => { accounts = _accounts; },
-            DefaultErrorHandler
+            blockchain.NewSession(user1)
         );
 
-        Assert.AreEqual(2, accounts.Length);
+        Assert.False(qRes.Error);
+        Assert.AreEqual(2, qRes.Content.Length);
     }
 
     // should return account by id
     [UnityTest]
-    public IEnumerator AccountTest10()
+    public async UniTask AccountTest10()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => { account = _account; }, DefaultErrorHandler);
+        var res = await accountBuilder.Build();
+        var account = res.Content;
 
-        yield return Account.GetById(account.Id, blockchain.NewSession(user),
-        (Account _account) => Assert.AreEqual(account.Id.ToUpper(), _account.Id.ToUpper()), DefaultErrorHandler);
+        var qRes = await Account.GetById(account.Id, blockchain.NewSession(user));
+
+        Assert.AreEqual(account.Id.ToUpper(), qRes.Content.Id.ToUpper());
     }
 
     // should have only one auth descriptor after calling deleteAllAuthDescriptorsExclude
     [UnityTest]
-    public IEnumerator AccountTest11()
+    public async UniTask AccountTest11()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
         User user2 = TestUser.SingleSig();
         User user3 = TestUser.SingleSig();
@@ -305,51 +292,46 @@ public class AccountTest
         accountBuilder.WithParticipants(new List<KeyPair>() { user1.KeyPair });
         accountBuilder.WithPoints(4);
 
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => { account = _account; }, DefaultErrorHandler);
+        var res = await accountBuilder.Build();
+        Account account = res.Content;
 
-        yield return AddAuthDescriptorTo(account, user1, user2, EmptyCallback);
-        yield return AddAuthDescriptorTo(account, user1, user3, EmptyCallback);
+        await AddAuthDescriptorTo(account, user1, user2, blockchain);
+        await AddAuthDescriptorTo(account, user1, user3, blockchain);
 
-        yield return account.DeleteAllAuthDescriptorsExclude(user1.AuthDescriptor, EmptyCallback, DefaultErrorHandler);
-        yield return blockchain.NewSession(user1).GetAccountById(account.Id,
-            (Account _account) => account = _account, DefaultErrorHandler
-        );
+        await account.DeleteAllAuthDescriptorsExclude(user1.AuthDescriptor);
         Assert.AreEqual(1, account.AuthDescriptor.Count);
     }
 
     // should be able to register account by directly calling \'register_account\' operation
     [UnityTest]
-    public IEnumerator AccountTest12()
+    public async UniTask AccountTest12()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
         User user = TestUser.SingleSig();
 
-        yield return blockchain.Call(AccountOperations.Op("ft3.dev_register_account",
-            new object[] { user.AuthDescriptor.ToGTV() })
-        , user, EmptyCallback, DefaultErrorHandler);
+        await blockchain.Call(AccountOperations.Op("ft3.dev_register_account",
+            new object[] { user.AuthDescriptor.ToGTV() }), user);
 
         BlockchainSession session = blockchain.NewSession(user);
 
-        Account account = null;
-        yield return session.GetAccountById(user.AuthDescriptor.ID, (Account _account) => account = _account, DefaultErrorHandler);
-        Assert.NotNull(account);
+        var res = await session.GetAccountById(user.AuthDescriptor.ID);
+        Assert.NotNull(res.Content);
     }
 
     // should be possible for auth descriptor to delete itself without admin flag
     [UnityTest]
-    public IEnumerator AccountTest13()
+    public async UniTask AccountTest13()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user1);
         accountBuilder.WithParticipants(new List<KeyPair>() { user1.KeyPair });
         accountBuilder.WithPoints(4);
 
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => { account = _account; });
+        var res = await accountBuilder.Build();
+        var account = res.Content;
 
         KeyPair keyPair = new KeyPair();
         User user2 = new User(keyPair,
@@ -359,31 +341,32 @@ public class AccountTest
             )
         );
 
-        yield return AddAuthDescriptorTo(account, user1, user2, EmptyCallback);
+        await AddAuthDescriptorTo(account, user1, user2, blockchain);
 
-        Account account2 = null;
-        yield return blockchain.NewSession(user2).GetAccountById(account.Id, (Account _account) => account2 = _account, DefaultErrorHandler);
-        bool successfully = false;
-        yield return account2.DeleteAuthDescriptor(user2.AuthDescriptor, () => successfully = true, DefaultErrorHandler);
+        res = await blockchain.NewSession(user2).GetAccountById(account.Id);
+        Account account2 = res.Content;
 
-        Assert.True(successfully);
-        yield return account2.Sync(EmptyCallback, DefaultErrorHandler);
+        var delRes = await account2.DeleteAuthDescriptor(user2.AuthDescriptor);
+
+        Assert.False(delRes.Error);
+        await account2.Sync();
         Assert.AreEqual(1, account2.AuthDescriptor.Count);
 
     }
 
     // shouldn't be possible for auth descriptor to delete other auth descriptor without admin flag
     [UnityTest]
-    public IEnumerator AccountTest15()
+    public async UniTask AccountTest15()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user1 = TestUser.SingleSig();
 
-        Account account = null;
-        yield return AccountBuilder.CreateAccountBuilder(blockchain, user1)
+        var res = await AccountBuilder.CreateAccountBuilder(blockchain, user1)
             .WithParticipants(new KeyPair[] { user1.KeyPair })
             .WithPoints(4)
-            .Build((Account _account) => account = _account);
+            .Build();
+
+        var account = res.Content;
 
         KeyPair keyPair2 = new KeyPair();
         User user2 = new User(keyPair2,
@@ -401,14 +384,12 @@ public class AccountTest
             )
         );
 
-        yield return AddAuthDescriptorTo(account, user1, user2, EmptyCallback);
-        yield return AddAuthDescriptorTo(account, user1, user3, EmptyCallback);
+        await AddAuthDescriptorTo(account, user1, user2, blockchain);
+        await AddAuthDescriptorTo(account, user1, user3, blockchain);
 
-        Account account2 = null;
-        yield return blockchain.NewSession(user3).GetAccountById(account.Id, (Account _account) => account2 = _account, DefaultErrorHandler);
+        var res2 = await blockchain.NewSession(user3).GetAccountById(account.Id);
 
-        bool successfully = false;
-        yield return account2.DeleteAuthDescriptor(user2.AuthDescriptor, () => successfully = true, DefaultErrorHandler);
-        Assert.False(successfully);
+        var qRes = await res2.Content.DeleteAuthDescriptor(user2.AuthDescriptor);
+        Assert.False(qRes.Error);
     }
 }

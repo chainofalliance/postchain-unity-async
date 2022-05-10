@@ -1,41 +1,31 @@
-using System.Collections;
 using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
+using Cysharp.Threading.Tasks;
 
 public class AssetBalanceTest
 {
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
-
     [UnityTest]
-    public IEnumerator AssetBalanceTestRun()
+    public async UniTask AssetBalanceTestRun()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
-        Asset asset1 = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset1 = _asset, DefaultErrorHandler);
-        Asset asset2 = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset2 = _asset, DefaultErrorHandler);
+        var asset1 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
+        var asset2 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain);
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => account = _account);
+        var account = await accountBuilder.Build();
 
+        Assert.False(asset1.Error);
+        Assert.False(asset2.Error);
+        Assert.False(account.Error);
 
-        yield return AssetBalance.GiveBalance(account.Id, asset1.Id, 10, blockchain, EmptyCallback, DefaultErrorHandler);
-        yield return AssetBalance.GiveBalance(account.Id, asset2.Id, 20, blockchain, EmptyCallback, DefaultErrorHandler);
+        await AssetBalance.GiveBalance(account.Content.Id, asset1.Content.Id, 10, blockchain);
+        await AssetBalance.GiveBalance(account.Content.Id, asset2.Content.Id, 20, blockchain);
 
-        AssetBalance[] balances = null;
-        yield return AssetBalance.GetByAccountId(account.Id, blockchain, (AssetBalance[] _balances) => balances = _balances, DefaultErrorHandler);
+        var balances = await AssetBalance.GetByAccountId(account.Content.Id, blockchain);
+        Assert.False(balances.Error);
 
-        Assert.AreEqual(2, balances.Length);
+        Assert.AreEqual(2, balances.Content.Length);
     }
 }

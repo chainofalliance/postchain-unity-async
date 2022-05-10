@@ -1,125 +1,108 @@
 using System.Collections.Generic;
-using System.Collections;
+using Chromia.Postchain.Client;
 using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System;
-using System.Linq;
+
+using Cysharp.Threading.Tasks;
 
 public class RateLimitTest
 {
     const int REQUEST_MAX_COUNT = 10;
     const int RECOVERY_TIME = 5000;
     const int POINTS_AT_ACCOUNT_CREATION = 1;
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
 
     // Should have a limit of 10 requests per minute
     [UnityTest]
-    public IEnumerator RateLimitTestRun1()
+    public async UniTask RateLimitTestRun1()
     {
-        yield return SetupBlockchain();
-        BlockchainInfo info = null;
-        yield return BlockchainInfo.GetInfo(blockchain.Connection,
-            (BlockchainInfo _info) => info = _info, DefaultErrorHandler
-        );
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        var info = await BlockchainInfo.GetInfo(blockchain.Connection);
 
-        Assert.AreEqual(REQUEST_MAX_COUNT, info.RateLimitInfo.MaxPoints);
-        Assert.AreEqual(RECOVERY_TIME, info.RateLimitInfo.RecoveryTime);
+        Assert.AreEqual(REQUEST_MAX_COUNT, info.Content.RateLimitInfo.MaxPoints);
+        Assert.AreEqual(RECOVERY_TIME, info.Content.RateLimitInfo.RecoveryTime);
     }
 
     // should show 10 at request count
     [UnityTest]
-    public IEnumerator RateLimitTestRun2()
+    public async UniTask RateLimitTestRun2()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
         AccountBuilder builder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         builder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        Account account = null;
-        yield return builder.Build((Account _account) => account = _account);
+        var account = await builder.Build();
 
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
-        Assert.AreEqual(1, account.RateLimit.Points);
+        await account.Content.Sync();
+        Assert.AreEqual(1, account.Content.RateLimit.Points);
     }
 
     // waits 20 seconds and gets 4 points
     [UnityTest]
-    public IEnumerator RateLimitTestRun3()
+    public async UniTask RateLimitTestRun3()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
         AccountBuilder builder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         builder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        Account account = null;
-        yield return builder.Build((Account _account) => account = _account);
+        var account = await builder.Build();
 
-        yield return new UnityEngine.WaitForSeconds(20);
+        await UniTask.Delay(TimeSpan.FromSeconds(20), ignoreTimeScale: false);
 
-        yield return RateLimit.ExecFreeOperation(account.GetID(), blockchain, EmptyCallback, DefaultErrorHandler); // used to make one block
-        yield return RateLimit.ExecFreeOperation(account.GetID(), blockchain, EmptyCallback, DefaultErrorHandler); // used to calculate the last block's timestamp (previous block).
+        await RateLimit.ExecFreeOperation(account.Content.GetID(), blockchain); // used to make one block
+        await RateLimit.ExecFreeOperation(account.Content.GetID(), blockchain); // used to calculate the last block's timestamp (previous block).
         // check the balance
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
-        Assert.AreEqual(4 + POINTS_AT_ACCOUNT_CREATION, account.RateLimit.Points); // 20 seconds / 5s recovery time
+        await account.Content.Sync();
+        Assert.AreEqual(4 + POINTS_AT_ACCOUNT_CREATION, account.Content.RateLimit.Points); // 20 seconds / 5s recovery time
     }
 
     // can make 4 operations
     [UnityTest]
-    public IEnumerator RateLimitTestRun4()
+    public async UniTask RateLimitTestRun4()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
         AccountBuilder builder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         builder.WithParticipants(new List<KeyPair>() { user.KeyPair });
         builder.WithPoints(4);
-        Account account = null;
-        yield return builder.Build((Account _account) => account = _account);
-        Assert.NotNull(account);
+        var account = await builder.Build();
 
-        bool successful = false;
-        yield return MakeRequests(account, 4 + POINTS_AT_ACCOUNT_CREATION, () => successful = true);
-        Assert.True(successful);
+        Assert.IsFalse(account.Error);
+        Assert.NotNull(account.Content);
 
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
-        Assert.AreEqual(0, account.RateLimit.Points);
+        await MakeRequests(account.Content, 4 + POINTS_AT_ACCOUNT_CREATION, blockchain);
+
+        await account.Content.Sync();
+        Assert.AreEqual(0, account.Content.RateLimit.Points);
     }
 
     // can't make another operation because she has 0 points
     [UnityTest]
-    public IEnumerator RateLimitTestRun5()
+    public async UniTask RateLimitTestRun5()
     {
-        yield return SetupBlockchain();
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
         AccountBuilder builder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         builder.WithParticipants(new List<KeyPair>() { user.KeyPair });
         builder.WithPoints(4);
-        Account account = null;
-        yield return builder.Build((Account _account) => account = _account);
+        var account = await builder.Build();
 
-        bool successful = false;
-        yield return MakeRequests(account, 4 + POINTS_AT_ACCOUNT_CREATION, () => successful = true);
-        Assert.True(successful);
+        var res = await MakeRequests(account.Content, 4 + POINTS_AT_ACCOUNT_CREATION, blockchain);
+        Assert.False(res.Error);
 
-        yield return account.Sync(EmptyCallback, DefaultErrorHandler);
+        await account.Content.Sync();
 
-        successful = false;
-        yield return MakeRequests(account, 8, () => successful = true);
-        Assert.False(successful);
+        res = await MakeRequests(account.Content, 8, blockchain);
+        Assert.True(res.Error);
     }
 
 
-    public IEnumerator MakeRequests(Account account, int requests, Action onSuccess)
+    public UniTask<PostchainResponse<string>> MakeRequests(Account account, int requests, Blockchain blockchain)
     {
         var txBuilder = blockchain.TransactionBuilder();
         var signers = new List<byte[]>();
@@ -135,7 +118,7 @@ public class RateLimitTest
             txBuilder.Add(AccountOperations.AddAuthDescriptor(account.Id, account.Session.User.AuthDescriptor.ID, user.AuthDescriptor));
         }
 
-        var tx = txBuilder.Build(signers.ToArray(), DefaultErrorHandler);
+        var tx = txBuilder.Build(signers.ToArray());
         tx.Sign(account.Session.User.KeyPair);
 
         foreach (var user in users)
@@ -143,6 +126,6 @@ public class RateLimitTest
             tx.Sign(user.KeyPair);
         }
 
-        yield return tx.PostAndWait(onSuccess);
+        return tx.PostAndWait();
     }
 }

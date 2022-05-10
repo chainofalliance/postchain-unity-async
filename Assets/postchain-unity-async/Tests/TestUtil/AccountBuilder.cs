@@ -1,9 +1,11 @@
 using Chromia.Postchain.Ft3;
 
 using System.Collections.Generic;
-using System.Collections;
 using System.Linq;
 using System;
+
+using Chromia.Postchain.Client;
+using Cysharp.Threading.Tasks;
 
 public class AccountBuilder
 {
@@ -65,56 +67,54 @@ public class AccountBuilder
         return this;
     }
 
-    public IEnumerator Build(Action<Account> onSuccess, Action<string> onError = null)
+    public async UniTask<PostchainResponse<Account>> Build()
     {
-        if (onError == null) onError = DefaultErrorHandler;
+        var res = await this.RegisterAccount();
 
-        Account account = null;
+        if (res.Error)
+            return res;
 
-        yield return this.RegisterAccount((Account _account) => account = _account, onError);
-
-        if (account != null)
+        if (!res.Error)
         {
-            yield return this.AddBalanceIfNeeded(account, () => { }, onError);
-            yield return this.AddPointsIfNeeded(account, (RateLimit _rateLimit) =>
-            {
-                account.RateLimit = _rateLimit;
-            }, onError);
+            await this.AddBalanceIfNeeded(res.Content);
+            var pointRes = await this.AddPointsIfNeeded(res.Content);
 
-            onSuccess(account);
+            if (!pointRes.Error)
+                res.Content.RateLimit = pointRes.Content;
         }
+
+        return res;
     }
     #endregion
 
     #region private
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
 
-    private IEnumerator RegisterAccount(Action<Account> onSuccess, Action<string> onError)
+    private UniTask<PostchainResponse<Account>> RegisterAccount()
     {
-        yield return Account.Register(
+        return Account.Register(
             this.GetAuthDescriptor(),
-            this._blockchain.NewSession(this._user),
-            onSuccess, onError
+            this._blockchain.NewSession(this._user)
         );
     }
 
-    private IEnumerator AddBalanceIfNeeded(Account account, Action onSuccess, Action<string> onError)
+    private async UniTask<PostchainResponse<string>> AddBalanceIfNeeded(Account account)
     {
         if (this._asset != null && this._balance != -1)
         {
-            yield return AssetBalance.GiveBalance(account.Id, this._asset.Id,
-                this._balance, this._blockchain, onSuccess, onError);
+            return await AssetBalance.GiveBalance(account.Id, this._asset.Id, this._balance, this._blockchain);
         }
+
+        return PostchainResponse<string>.ErrorResponse("Asset not valid");
     }
 
-    private IEnumerator AddPointsIfNeeded(Account account, Action<RateLimit> onSuccess, Action<string> onError)
+    private async UniTask<PostchainResponse<RateLimit>> AddPointsIfNeeded(Account account)
     {
         if (this._points > 0)
         {
-            yield return RateLimit.GivePoints(account.Id, this._points, this._blockchain, () => { }, onError);
+            await RateLimit.GivePoints(account.Id, this._points, this._blockchain);
         }
 
-        yield return RateLimit.GetByAccountRateLimit(account.Id, this._blockchain, onSuccess, onError);
+        return await RateLimit.GetByAccountRateLimit(account.Id, this._blockchain);
     }
 
     private AuthDescriptor GetAuthDescriptor()

@@ -1,28 +1,18 @@
 using System.Collections.Generic;
-using System.Collections;
+using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
 public class XCTransferTest
 {
-    private Blockchain blockchain;
-
-    private IEnumerator SetupBlockchain()
-    {
-        yield return BlockchainUtil.GetDefaultBlockchain((Blockchain _blockchain) => { blockchain = _blockchain; });
-    }
-
-    private void DefaultErrorHandler(string error) { UnityEngine.Debug.Log(error); }
-    private void EmptyCallback() { }
-
     // Cross-chain transfer
     [UnityTest]
-    public IEnumerator XcTransferTestRun1()
+    public async UniTask XcTransferTestRun1()
     {
-        yield return SetupBlockchain();
-        Asset asset = null;
-        yield return Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain, (Asset _asset) => asset = _asset, DefaultErrorHandler);
+        var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+
+        var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
 
         var destinationChainId = TestUtil.GenerateId();
         var destinationAccountId = TestUtil.GenerateId();
@@ -30,26 +20,20 @@ public class XCTransferTest
 
         AccountBuilder accountBuilder = AccountBuilder.CreateAccountBuilder(blockchain, user);
         accountBuilder.WithParticipants(new List<KeyPair>() { user.KeyPair });
-        accountBuilder.WithBalance(asset, 100);
+        accountBuilder.WithBalance(asset.Content, 100);
         accountBuilder.WithPoints(1);
-        Account account = null;
-        yield return accountBuilder.Build((Account _account) => account = _account);
+        var account = await accountBuilder.Build();
 
-        yield return account.XcTransfer(destinationChainId, destinationAccountId, asset.Id, 10, EmptyCallback, DefaultErrorHandler);
+        await account.Content.XcTransfer(destinationChainId, destinationAccountId, asset.Content.Id, 10);
 
-        AssetBalance accountBalance = null;
-        yield return AssetBalance.GetByAccountAndAssetId(account.Id, asset.Id, blockchain, (AssetBalance _balance) => accountBalance = _balance, DefaultErrorHandler);
+        var accountBalance = await AssetBalance.GetByAccountAndAssetId(account.Content.Id, asset.Content.Id, blockchain);
 
-        AssetBalance chainBalance = null;
-        yield return AssetBalance.GetByAccountAndAssetId(
+        var chainBalance = await AssetBalance.GetByAccountAndAssetId(
             TestUtil.BlockchainAccountId(destinationChainId),
-            asset.Id,
-            blockchain,
-            (AssetBalance _balance) => chainBalance = _balance,
-            DefaultErrorHandler
-        );
+            asset.Content.Id,
+            blockchain);
 
-        Assert.AreEqual(90, accountBalance.Amount);
-        Assert.AreEqual(10, chainBalance.Amount);
+        Assert.AreEqual(90, accountBalance.Content.Amount);
+        Assert.AreEqual(10, chainBalance.Content.Amount);
     }
 }

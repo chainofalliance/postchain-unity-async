@@ -13,7 +13,7 @@ namespace Chromia.Postchain.Client
         {
             get
             {
-                if (default(T) == null || default(T).Equals(_content))
+                if (_content == null)
                 {
                     if (String.IsNullOrEmpty(_rawContent))
                     {

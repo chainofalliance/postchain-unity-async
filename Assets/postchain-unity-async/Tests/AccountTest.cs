@@ -39,8 +39,12 @@ public class AccountTest
     public async Task AccountTest2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
+        UnityEngine.Debug.Log("1");
         User user = TestUser.SingleSig();
+        UnityEngine.Debug.Log("2");
+
         var res = await blockchain.RegisterAccount(user.AuthDescriptor, user);
+        UnityEngine.Debug.Log("3");
 
         Assert.IsFalse(res.Error);
         Assert.NotNull(res.Content);

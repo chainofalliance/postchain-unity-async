@@ -17,7 +17,6 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-
     }
 
     [Test]
@@ -31,7 +30,6 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-
     }
 
     [Test]
@@ -45,7 +43,6 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-
     }
 
     [Test]
@@ -59,7 +56,6 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-
     }
 
     [Test]
@@ -73,6 +69,5 @@ public class Asn1IntegerTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-
     }
 }

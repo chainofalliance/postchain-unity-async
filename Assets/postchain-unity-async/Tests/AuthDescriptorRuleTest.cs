@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System;
@@ -48,7 +49,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed when calling operations, number of times less than or equal to value set by operation count rule
     [Test]
-    public async void AuthDescriptorRuleTestRun1()
+    public async Task AuthDescriptorRuleTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await CreateAsset(blockchain);
@@ -66,7 +67,7 @@ public class AuthDescriptorRuleTest
 
     // should fail when calling operations, number of times more than value set by operation count rule
     [Test]
-    public async void AuthDescriptorRuleTestRun2()
+    public async Task AuthDescriptorRuleTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await CreateAsset(blockchain);
@@ -84,7 +85,7 @@ public class AuthDescriptorRuleTest
 
     // should fail when current time is greater than time defined by 'less than' block time rule
     [Test]
-    public async void AuthDescriptorRuleTestRun3()
+    public async Task AuthDescriptorRuleTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await CreateAsset(blockchain);
@@ -99,7 +100,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed when current time is less than time defined by 'less than' block time rule
     [Test]
-    public async void AuthDescriptorRuleTestRun4()
+    public async Task AuthDescriptorRuleTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await CreateAsset(blockchain);
@@ -113,7 +114,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed when current block height is less than value defined by 'less than' block height rule
     [Test]
-    public async void AuthDescriptorRuleTestRun5()
+    public async Task AuthDescriptorRuleTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -131,7 +132,7 @@ public class AuthDescriptorRuleTest
 
     // should fail when current block height is greater than value defined by 'less than' block height rule
     [Test]
-    public async void AuthDescriptorRuleTestRun6()
+    public async Task AuthDescriptorRuleTestRun6()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await CreateAsset(blockchain);
@@ -141,12 +142,12 @@ public class AuthDescriptorRuleTest
         var account2 = await DestinationAccount(blockchain);
 
         var res = await account1.Content.Transfer(account2.Content.GetID(), asset.Content.Id, 10);
-        Assert.False(res.Error);
+        Assert.True(res.Error);
     }
 
     // should fail if operation is executed before timestamp defined by 'greater than' block time rule
     [Test]
-    public async void AuthDescriptorRuleTestRun7()
+    public async Task AuthDescriptorRuleTestRun7()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await CreateAsset(blockchain);
@@ -162,7 +163,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed if operation is executed after timestamp defined by 'greater than' block time rule
     [Test]
-    public async void AuthDescriptorRuleTestRun8()
+    public async Task AuthDescriptorRuleTestRun8()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -181,7 +182,7 @@ public class AuthDescriptorRuleTest
 
     // should fail if operation is executed before block defined by 'greater than' block height rule
     [Test]
-    public async void AuthDescriptorRuleTestRun9()
+    public async Task AuthDescriptorRuleTestRun9()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -200,7 +201,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed if operation is executed after block defined by 'greater than' block height rule
     [Test]
-    public async void AuthDescriptorRuleTestRun10()
+    public async Task AuthDescriptorRuleTestRun10()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -219,7 +220,7 @@ public class AuthDescriptorRuleTest
 
     // should be able to create complex rules
     [Test]
-    public async void AuthDescriptorRuleTestRun11()
+    public async Task AuthDescriptorRuleTestRun11()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -238,7 +239,7 @@ public class AuthDescriptorRuleTest
 
     // should fail if block heights defined by 'greater than' and 'less than' block height rules are less than current block height
     [Test]
-    public async void AuthDescriptorRuleTestRun12()
+    public async Task AuthDescriptorRuleTestRun12()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -257,7 +258,7 @@ public class AuthDescriptorRuleTest
 
     // should fail if block times defined by 'greater than' and 'less than' block time rules are in the past
     [Test]
-    public async void AuthDescriptorRuleTestRun13()
+    public async Task AuthDescriptorRuleTestRun13()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -280,7 +281,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed if current time is within period defined by 'greater than' and 'less than' block time rules
     [Test]
-    public async void AuthDescriptorRuleTestRun14()
+    public async Task AuthDescriptorRuleTestRun14()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -303,7 +304,7 @@ public class AuthDescriptorRuleTest
 
     // should succeed if current time is within period defined by 'greater than' and 'less than' block time rules
     [Test]
-    public async void AuthDescriptorRuleTestRun15()
+    public async Task AuthDescriptorRuleTestRun15()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -337,7 +338,7 @@ public class AuthDescriptorRuleTest
 
     // shouldn't delete non-expired auth descriptor
     [Test]
-    public async void AuthDescriptorRuleTestRun16()
+    public async Task AuthDescriptorRuleTestRun16()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -370,7 +371,7 @@ public class AuthDescriptorRuleTest
 
     // should delete only expired auth descriptor if multiple expiring descriptors exist
     [Test]
-    public async void AuthDescriptorRuleTestRun17()
+    public async Task AuthDescriptorRuleTestRun17()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -402,7 +403,7 @@ public class AuthDescriptorRuleTest
 
     // should add auth descriptors
     [Test]
-    public async void AuthDescriptorRuleTestRun18()
+    public async Task AuthDescriptorRuleTestRun18()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -424,7 +425,7 @@ public class AuthDescriptorRuleTest
 
     // should delete auth descriptors
     [Test]
-    public async void AuthDescriptorRuleTestRun19()
+    public async Task AuthDescriptorRuleTestRun19()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -448,7 +449,7 @@ public class AuthDescriptorRuleTest
 
     // should fail when deleting an auth descriptor which is not owned by the account
     [Test]
-    public async void AuthDescriptorRuleTestRun20()
+    public async Task AuthDescriptorRuleTestRun20()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -466,7 +467,7 @@ public class AuthDescriptorRuleTest
 
     // should delete auth descriptor
     [Test]
-    public async void AuthDescriptorRuleTestRun21()
+    public async Task AuthDescriptorRuleTestRun21()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -485,7 +486,7 @@ public class AuthDescriptorRuleTest
 
     // Should be able to create same rules with different value
     [Test]
-    public async void AuthDescriptorRuleTestRun22()
+    public async Task AuthDescriptorRuleTestRun22()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -501,7 +502,7 @@ public class AuthDescriptorRuleTest
 
     // shouldn't be able to create too many rules
     [Test]
-    public async void AuthDescriptorRuleTestRun23()
+    public async Task AuthDescriptorRuleTestRun23()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -517,6 +518,6 @@ public class AuthDescriptorRuleTest
         User user = TestUser.SingleSig(rules);
 
         var account = await SourceAccount(blockchain, user, asset.Content);
-        Assert.AreEqual(null, account);
+        Assert.AreEqual(null, account.Content);
     }
 }

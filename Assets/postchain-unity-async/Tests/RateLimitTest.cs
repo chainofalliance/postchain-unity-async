@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Chromia.Postchain.Client;
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System;
@@ -14,7 +15,7 @@ public class RateLimitTest
 
     // Should have a limit of 10 requests per minute
     [Test]
-    public async void RateLimitTestRun1()
+    public async Task RateLimitTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var info = await BlockchainInfo.GetInfo(blockchain.Connection);
@@ -25,7 +26,7 @@ public class RateLimitTest
 
     // should show 10 at request count
     [Test]
-    public async void RateLimitTestRun2()
+    public async Task RateLimitTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -40,7 +41,7 @@ public class RateLimitTest
 
     // waits 20 seconds and gets 4 points
     [Test]
-    public async void RateLimitTestRun3()
+    public async Task RateLimitTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -60,7 +61,7 @@ public class RateLimitTest
 
     // can make 4 operations
     [Test]
-    public async void RateLimitTestRun4()
+    public async Task RateLimitTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -81,7 +82,7 @@ public class RateLimitTest
 
     // can't make another operation because she has 0 points
     [Test]
-    public async void RateLimitTestRun5()
+    public async Task RateLimitTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();

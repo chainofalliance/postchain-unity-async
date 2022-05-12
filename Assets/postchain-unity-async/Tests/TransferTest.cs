@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
@@ -8,7 +9,7 @@ public class TransferTest
 {
     // should succeed when balance is higher than amount to transfer
     [Test]
-    public async void TransferTestRun1()
+    public async Task TransferTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -35,7 +36,7 @@ public class TransferTest
 
     // should fail when balance is lower than amount to transfer
     [Test]
-    public async void TransferTestRun2()
+    public async Task TransferTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -55,7 +56,7 @@ public class TransferTest
 
     // should fail if auth descriptor doesn't have transfer rights
     [Test]
-    public async void TransferTestRun3()
+    public async Task TransferTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -77,7 +78,7 @@ public class TransferTest
 
     // should succeed if transferring tokens to a multisig account
     [Test]
-    public async void TransferTestRun4()
+    public async Task TransferTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -120,7 +121,7 @@ public class TransferTest
 
     // should succeed burning tokens
     [Test]
-    public async void TransferTestRun5()
+    public async Task TransferTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);
@@ -133,6 +134,7 @@ public class TransferTest
         var account = await accountBuilder.Build();
 
         await account.Content.BurnTokens(asset.Content.Id, 10);
+
         var assetBalance = account.Content.GetAssetById(asset.Content.Id);
 
         Assert.AreEqual(190, assetBalance.Amount);

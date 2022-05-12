@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
@@ -8,7 +9,7 @@ public class BlockchainTest
 {
     // should provide info
     [Test]
-    public async void BlockchainTestRun1()
+    public async Task BlockchainTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var info = await BlockchainInfo.GetInfo(blockchain.Connection);
@@ -18,7 +19,7 @@ public class BlockchainTest
 
     // should be able to register an account
     [Test]
-    public async void BlockchainTestRun2()
+    public async Task BlockchainTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -33,7 +34,7 @@ public class BlockchainTest
 
     // should return account by participant id
     [Test]
-    public async void BlockchainTestRun3()
+    public async Task BlockchainTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -50,7 +51,7 @@ public class BlockchainTest
 
     // should return account by auth descriptor id
     [Test]
-    public async void BlockchainTestRun4()
+    public async Task BlockchainTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
@@ -67,19 +68,26 @@ public class BlockchainTest
 
     // should be able to link other chain
     [Test]
-    public async void BlockchainTestRun5()
+    public async Task BlockchainTestRun5()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
         var chainId1 = TestUtil.GenerateId();
-        await blockchain.LinkChain(chainId1);
-        var isLinked = await blockchain.IsLinkedWithChain(chainId1);
+        var res = await blockchain.LinkChain(chainId1);
+        Assert.False(res.Error);
+
+        var isLinked = await blockchain.IsLinkedWithChain(chainId1.ToUpper());
+
+        UnityEngine.Debug.Log(isLinked.Content);
+        UnityEngine.Debug.Log(isLinked.RawContent);
+
+        Assert.False(isLinked.Error);
         Assert.True(isLinked.Content);
     }
 
     // should be able to link multiple chains
     [Test]
-    public async void BlockchainTestRun6()
+    public async Task BlockchainTestRun6()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var chainId1 = TestUtil.GenerateId();
@@ -96,7 +104,7 @@ public class BlockchainTest
 
     // should return false when isLinkedWithChain is called for unknown chain id
     [Test]
-    public async void BlockchainTestRun7()
+    public async Task BlockchainTestRun7()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var isLinked = await blockchain.IsLinkedWithChain(TestUtil.GenerateId());
@@ -106,7 +114,7 @@ public class BlockchainTest
 
     // should return asset queried by id
     [Test]
-    public async void BlockchainTestRun8()
+    public async Task BlockchainTestRun8()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);

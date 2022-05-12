@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
@@ -7,7 +8,7 @@ public class XCTransferTest
 {
     // Cross-chain transfer
     [Test]
-    public async void XcTransferTestRun1()
+    public async Task XcTransferTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 

@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
@@ -5,7 +6,7 @@ public class PostchainTest
 {
     // should instantiate blockchain by passing chain id as a string
     [Test]
-    public async void PostchainTestRun1()
+    public async Task PostchainTestRun1()
     {
         string NODEURL = "http://localhost:7740";
 

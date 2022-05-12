@@ -128,26 +128,17 @@ namespace Chromia.Postchain.Ft3
 
         public static async UniTask<PostchainResponse<Account>> Register(AuthDescriptor authDescriptor, BlockchainSession session)
         {
-            UnityEngine.Debug.Log("2.1");
             var res = await session.Call(AccountDevOperations.Register(authDescriptor));
-            UnityEngine.Debug.Log("2.2");
             if (res.Error)
                 return PostchainResponse<Account>.ErrorResponse(res.ErrorMessage);
-
-            UnityEngine.Debug.Log("2.3");
 
             var account = new Account(
                  Util.ByteArrayToString(authDescriptor.Hash()),
                  new AuthDescriptor[] { authDescriptor },
                  session);
-            UnityEngine.Debug.Log("2.4");
             await account.Sync();
-            UnityEngine.Debug.Log("2.5");
 
-            var test = PostchainResponse<Account>.SuccessResponse(account);
-            UnityEngine.Debug.Log("2.6");
-
-            return test;
+            return PostchainResponse<Account>.SuccessResponse(account);
         }
 
         public static byte[] RawTransactionRegister(User user, AuthDescriptor authDescriptor, Blockchain blockchain)
@@ -272,7 +263,7 @@ namespace Chromia.Postchain.Ft3
         {
             var res = await AssetBalance.GetByAccountId(this.Id, this.Session.Blockchain);
 
-            if (!res.Error)
+            if (res.Error)
                 UnityEngine.Debug.LogWarning(res.ErrorMessage);
             else
                 this.Assets = res.Content.ToList();

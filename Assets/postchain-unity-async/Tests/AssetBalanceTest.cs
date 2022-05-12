@@ -1,10 +1,11 @@
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 
 public class AssetBalanceTest
 {
     [Test]
-    public async void AssetBalanceTestRun()
+    public async Task AssetBalanceTestRun()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 

@@ -13,14 +13,10 @@ namespace Chromia.Postchain.Client
         {
             get
             {
-                if (_content == null)
+                if (!_isConverted)
                 {
-                    if (String.IsNullOrEmpty(_rawContent))
-                    {
-                        return default(T);
-                    }
-
-                    _content = JsonConvert.DeserializeObject<T>(_rawContent);
+                    _content = String.IsNullOrEmpty(_rawContent) ? default(T) : JsonConvert.DeserializeObject<T>(_rawContent);
+                    _isConverted = true;
                 }
 
                 return _content;
@@ -31,6 +27,7 @@ namespace Chromia.Postchain.Client
         private string _errorMessage;
         private string _rawContent;
         private T _content;
+        private bool _isConverted = false;
 
         public static PostchainResponse<T> SuccessResponse()
         {
@@ -39,7 +36,8 @@ namespace Chromia.Postchain.Client
                 _error = false,
                 _errorMessage = null,
                 _rawContent = null,
-                _content = default(T)
+                _content = default(T),
+                _isConverted = true
             };
         }
 
@@ -50,7 +48,8 @@ namespace Chromia.Postchain.Client
                 _error = false,
                 _errorMessage = null,
                 _rawContent = null,
-                _content = content
+                _content = content,
+                _isConverted = true
             };
         }
 
@@ -61,7 +60,8 @@ namespace Chromia.Postchain.Client
                 _error = true,
                 _errorMessage = errorMessage,
                 _rawContent = null,
-                _content = default(T)
+                _content = default(T),
+                _isConverted = true
             };
         }
 

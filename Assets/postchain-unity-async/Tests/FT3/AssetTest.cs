@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Chromia.Postchain.Ft3;
 using NUnit.Framework;
 using System.Linq;
@@ -8,7 +9,7 @@ public class AssetTest
 {
     // should be successfully registered
     [Test]
-    public async void AssetTestRun1()
+    public async Task AssetTestRun1()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -24,7 +25,7 @@ public class AssetTest
 
     // should be returned when queried by name
     [Test]
-    public async void AssetTestRun2()
+    public async Task AssetTestRun2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -47,7 +48,7 @@ public class AssetTest
 
     // should be returned when queried by id
     [Test]
-    public async void AssetTestRun3()
+    public async Task AssetTestRun3()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
 
@@ -71,7 +72,7 @@ public class AssetTest
 
     // should return all the assets registered
     [Test]
-    public async void AssetTestRun4()
+    public async Task AssetTestRun4()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         var asset1 = await Asset.Register(TestUtil.GenerateAssetName(), TestUtil.GenerateId(), blockchain);

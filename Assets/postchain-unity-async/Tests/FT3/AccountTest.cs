@@ -39,13 +39,9 @@ public class AccountTest
     public async Task AccountTest2()
     {
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
-        UnityEngine.Debug.Log("1");
         User user = TestUser.SingleSig();
-        UnityEngine.Debug.Log("2");
 
         var res = await blockchain.RegisterAccount(user.AuthDescriptor, user);
-        UnityEngine.Debug.Log("3");
-
         Assert.IsFalse(res.Error);
         Assert.NotNull(res.Content);
     }
@@ -215,7 +211,7 @@ public class AccountTest
             )
         );
 
-        Assert.False(resAddAuth.Error);
+        Assert.True(resAddAuth.Error);
         Assert.AreEqual(1, resAccount.Content.AuthDescriptor.Count);
     }
 
@@ -397,6 +393,6 @@ public class AccountTest
         var res2 = await blockchain.NewSession(user3).GetAccountById(account.Id);
 
         var qRes = await res2.Content.DeleteAuthDescriptor(user2.AuthDescriptor);
-        Assert.False(qRes.Error);
+        Assert.True(qRes.Error);
     }
 }

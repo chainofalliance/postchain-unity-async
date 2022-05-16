@@ -1,42 +1,13 @@
 using System;
-using System.Collections;
 using NUnit.Framework;
 
 using Chromia.Postchain.Client;
 using Chromia.Postchain.Client.ASN1;
 
-public class Asn1ByteArrayTest
+public class Asn1IntegerTest
 {
     [Test]
-    public IEnumerator ByteArrayTest()
-    {
-        var val = new GTXValue();
-        val.Choice = GTXValueChoice.ByteArray;
-        val.ByteArray = new byte[] { 0xaf, 0xfe, 0xca, 0xfe };
-
-        var decoded = GTXValue.Decode(new AsnReader(val.Encode()));
-        Assert.AreEqual(val.Choice, decoded.Choice);
-        Assert.AreEqual(val.ByteArray, decoded.ByteArray);
-        Assert.AreEqual(val, decoded);
-        yield return null;
-    }
-
-    [Test]
-    public IEnumerator EmptyByteArrayTest()
-    {
-        var val = new GTXValue();
-        val.Choice = GTXValueChoice.ByteArray;
-        val.ByteArray = new byte[] { };
-
-        var decoded = GTXValue.Decode(new AsnReader(val.Encode()));
-        Assert.AreEqual(val.Choice, decoded.Choice);
-        Assert.AreEqual(val.ByteArray, decoded.ByteArray);
-        Assert.AreEqual(val, decoded);
-        yield return null;
-    }
-
-    [Test]
-    public IEnumerator IntegerTest()
+    public void IntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -46,11 +17,10 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
     }
 
     [Test]
-    public IEnumerator NegativeIntegerTest()
+    public void NegativeIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -60,11 +30,10 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
     }
 
     [Test]
-    public IEnumerator ZeroIntegerTest()
+    public void ZeroIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -74,11 +43,10 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
     }
 
     [Test]
-    public IEnumerator MaxIntegerTest()
+    public void MaxIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
@@ -88,20 +56,18 @@ public class Asn1ByteArrayTest
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
     }
 
     [Test]
-    public IEnumerator MinIntegerTest()
+    public void MinIntegerTest()
     {
         var val = new GTXValue();
         val.Choice = GTXValueChoice.Integer;
-        val.Integer = Int32.MaxValue;
+        val.Integer = Int32.MinValue;
 
         var decoded = GTXValue.Decode(new AsnReader(val.Encode()));
         Assert.AreEqual(val.Choice, decoded.Choice);
         Assert.AreEqual(val.Integer, decoded.Integer);
         Assert.AreEqual(val, decoded);
-        yield return null;
     }
 }

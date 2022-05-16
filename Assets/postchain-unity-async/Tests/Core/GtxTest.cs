@@ -24,6 +24,5 @@ public class GtxTest
         var afterSigs = gtx.Signatures;
 
         Assert.AreEqual(beforeSigs, afterSigs);
-
     }
 }

@@ -4,29 +4,30 @@ using Chromia.Postchain.Fs;
 using UnityEngine.UI;
 using UnityEngine;
 using System.Text;
+
 using Cysharp.Threading.Tasks;
 
 public class FileStorageSample : MonoBehaviour
 {
-    [SerializeField]
-    private string nodeUrl;
-
-    [SerializeField]
-    private FileHub fileHub;
-
     [SerializeField]
     private InputField input;
 
     [SerializeField]
     private Text showText;
 
+
+    private string nodeUrl = "http://localhost:7740";
+    private int chainId = 0;
+
+    private FileHub fileHub;
     private User user;
     private Account account;
     private FsFile latestFile;
 
     private async void Start()
     {
-        await fileHub.Establish(nodeUrl, 1);
+        fileHub = gameObject.AddComponent<FileHub>();
+        await fileHub.Establish(nodeUrl, chainId);
 
         KeyPair keyPair = new KeyPair();
         SingleSignatureAuthDescriptor singleSigAuthDescriptor = new SingleSignatureAuthDescriptor(
@@ -41,7 +42,12 @@ public class FileStorageSample : MonoBehaviour
         this.account = account.Content;
     }
 
-    private async UniTask SaveText()
+    public void SaveWrapper()
+    {
+        SaveText();
+    }
+
+    public async UniTask SaveText()
     {
         if (this.user == null) return;
 
@@ -56,7 +62,12 @@ public class FileStorageSample : MonoBehaviour
         latestFile = file;
     }
 
-    private async UniTask LoadLatestText()
+    public void LoadWrapper()
+    {
+        LoadLatestText();
+    }
+
+    public async UniTask LoadLatestText()
     {
         if (latestFile == null) return;
 

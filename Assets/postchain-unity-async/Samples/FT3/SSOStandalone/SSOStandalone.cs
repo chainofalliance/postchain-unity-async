@@ -49,7 +49,6 @@ public class SSOStandalone : MonoBehaviour
 
         if (!res.Error)
             PanelManager.AddOptionToPanel(res.Content);
-
     }
 
     public async void Connect()

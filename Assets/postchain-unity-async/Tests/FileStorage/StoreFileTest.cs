@@ -15,7 +15,7 @@ using Cysharp.Threading.Tasks;
 public class StoreFile
 {
     private const string FILEHUB_NODE = "http://127.0.0.1:7740";
-    private const string FILEHUB_BRID = "ED5C6FF9862E0E545C472E3FB033A776CD7FAB28AFE28124ABF6245A26CA579D";
+    private const string FILEHUB_BRID = "7239B2361AE4D4D4AA99251A202595BAB41550AD3EF494851A6D8D8A87F96468";
 
     private static System.Random random = new System.Random();
 
@@ -114,8 +114,6 @@ public class StoreFile
         var path = Path.Combine(UnityEngine.Application.dataPath, "postchain-unity-async/Tests/FileStorage/files/large.txt");
         var file = FsFile.FromLocalFile(path);
 
-        Debug.Log(file.NumberOfChunks());
-
         await SetupFileHub();
         await SetupAccount();
 
@@ -145,7 +143,6 @@ public class StoreFile
         Debug.Log("Stored file with hash: " + Util.ByteArrayToString(file.Hash));
 
         var storedFile = await fileHub.GetFile(file.Hash);
-
         Assert.False(storedFile.Error);
         Assert.AreEqual(storedFile.Content.NumberOfChunks(), 21);
         Assert.AreEqual(storedFile.Content.NumberOfChunks(), file.NumberOfChunks());

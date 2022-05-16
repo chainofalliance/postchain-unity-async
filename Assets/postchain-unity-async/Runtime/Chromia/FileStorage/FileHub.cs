@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using Chromia.Postchain.Ft3;
-using System.Collections;
-using Chromia.Postchain;
 using UnityEngine;
 using System;
 
@@ -17,20 +15,18 @@ namespace Chromia.Postchain.Fs
             return fileChain.GetChunkDataByHash(hash);
         }
 
-        [SerializeField] private GameObject fileChainContainer;
-
         public Blockchain Blockchain { get; private set; }
 
         public async UniTask<Blockchain> Establish(string nodeUrl, string brid)
         {
-            Chromia.Postchain.Ft3.Postchain postchain = new Chromia.Postchain.Ft3.Postchain(nodeUrl);
+            Ft3.Postchain postchain = new Ft3.Postchain(nodeUrl);
             Blockchain = await postchain.Blockchain(brid);
             return Blockchain;
         }
 
         public async UniTask<Blockchain> Establish(string nodeUrl, int chainId)
         {
-            Chromia.Postchain.Ft3.Postchain postchain = new Chromia.Postchain.Ft3.Postchain(nodeUrl);
+            Ft3.Postchain postchain = new Ft3.Postchain(nodeUrl);
             Blockchain = await postchain.Blockchain(chainId);
             return Blockchain;
         }
@@ -93,7 +89,7 @@ namespace Chromia.Postchain.Fs
         private FileChain InitFileChainClient(string url, string brid)
         {
             Debug.Log("Initializing filechain client with brid " + brid);
-            return FileChain.Create(url, brid, this.fileChainContainer);
+            return FileChain.Create(url, brid, gameObject);
         }
 
         private async UniTask StoreChunks(User user, FsFile file)

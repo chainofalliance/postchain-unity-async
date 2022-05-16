@@ -50,7 +50,6 @@ public class AccountTest
     [Test]
     public async Task AccountTest3()
     {
-        UnityEngine.Debug.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         var blockchain = await BlockchainUtil.GetDefaultBlockchain();
         User user = TestUser.SingleSig();
 
@@ -69,9 +68,6 @@ public class AccountTest
                     new List<FlagsType>() { FlagsType.Transfer }.ToArray()
             )
         );
-
-        UnityEngine.Debug.Log("!!!!!!!!HEllloo!!!!!!!!!!!!!");
-        UnityEngine.Debug.Log(res.Content.AuthDescriptor.Count);
         Assert.AreEqual(2, res.Content.AuthDescriptor.Count);
     }
 

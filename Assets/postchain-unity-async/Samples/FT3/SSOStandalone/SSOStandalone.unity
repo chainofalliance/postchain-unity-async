@@ -1000,15 +1000,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1182677309}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c3b2debb9514946d7bbd43673fdd6771, type: 3}
+  m_Script: {fileID: 11500000, guid: 1ea0acdd943ef41f5951e1025f53e299, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _blockchainRID: 1A3A5B4C919798B52292094185B37E71898CC245FA9F0AC51A33B473150FE889
+  _blockchainRID: 7239B2361AE4D4D4AA99251A202595BAB41550AD3EF494851A6D8D8A87F96468
   _baseURL: http://localhost:7740
-  _vaultUrl: https://dev.vault.chromia-development.com/
-  _successUrl: unity://login
-  _cancelUrl: unity://cancel
-  _customProtocolName: unity
+  _vaultUrl: https://vault-testnet.chromia.com/
+  _successUrl: unitydl://success
+  _cancelUrl: unitydl://cancel
+  _customProtocolName: unitydl
 --- !u!4 &1182677312
 Transform:
   m_ObjectHideFlags: 0

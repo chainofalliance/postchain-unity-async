@@ -51,8 +51,7 @@ namespace Chromia.Postchain.Fs
             return chunks;
         }
 
-        private static int BYTES = 1000000;
-
+        private static int BYTES = 100000;
 
         public readonly byte[] Hash;
         public readonly List<byte[]> Chunks;

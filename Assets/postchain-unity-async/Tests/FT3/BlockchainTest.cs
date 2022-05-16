@@ -78,9 +78,6 @@ public class BlockchainTest
 
         var isLinked = await blockchain.IsLinkedWithChain(chainId1.ToUpper());
 
-        UnityEngine.Debug.Log(isLinked.Content);
-        UnityEngine.Debug.Log(isLinked.RawContent);
-
         Assert.False(isLinked.Error);
         Assert.True(isLinked.Content);
     }

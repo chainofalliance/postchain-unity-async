@@ -6,7 +6,7 @@ using System;
 
 public class SSOWebgl : MonoBehaviour
 {
-    [SerializeField] private string _blockchainRID;
+    [SerializeField] private int _chainId;
     [SerializeField] private string _baseURL;
     [SerializeField] private string _vaultUrl;
     [SerializeField] private string _successUrl;
@@ -28,10 +28,16 @@ public class SSOWebgl : MonoBehaviour
     private async void Start()
     {
         Postchain postchain = new Postchain(_baseURL);
-        _blockchain = await postchain.Blockchain(_blockchainRID);
-        _sso = new SSO(this._blockchain, new SSOStoreLocalStorage());
+        _blockchain = await postchain.Blockchain(_chainId);
+        _sso = new SSO(this._blockchain, new SSOWebGLStore());
 
-        var resPending = await _sso.PendingSSO();
+        var resPending = SSOWebGLStore.ExtractRawTx();
+
+        if (!String.IsNullOrEmpty(resPending))
+        {
+            await _sso.FinalizeLogin(resPending);
+        }
+
         var resAuto = await _sso.AutoLogin();
 
         PanelManager.AddOptionsToPanel(resAuto);

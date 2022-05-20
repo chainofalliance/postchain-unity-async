@@ -3,65 +3,86 @@ using System;
 
 namespace Chromia.Postchain.Ft3
 {
-    public interface SSOStore
-    {
-        KeyPair TmpKeyPair
-        {
-            get;
-        }
-        byte[] TmpPrivKey
-        {
-            get; set;
-        }
-        string TmpTx
-        {
-            get; set;
-        }
-        List<SavedSSOAccount> GetAccounts();
-        void AddAccount(string accountId, string privKey);
-        void RemoveAccount(string accountId);
-        void Load();
-        void Save();
-        void ClearTmp();
-    }
-
     [Serializable]
-    public class SavedSSOData
+    public abstract class SSOStore
     {
-        public string __tmpTX = null;
-        public string __ssoTmpPrivKey = null;
-        public List<SavedSSOAccount> __accounts = new List<SavedSSOAccount>();
+        public SSOLoadOut DataLoad;
+
+        public KeyPair TmpKeyPair
+        {
+            get
+            {
+                if (DataLoad.TmpPrivKey == null) return null;
+                return new KeyPair(DataLoad.TmpPrivKey);
+            }
+        }
+
+        public List<SSOAccount> Accounts
+        {
+            get { return DataLoad.Accounts; }
+        }
+
+        public SSOStore()
+        {
+            DataLoad = new SSOLoadOut();
+        }
+
+        public abstract void Load();
+        public abstract void Save();
 
         public void AddAccountOrPrivKey(string accountId, string privKey)
         {
-            var result = __accounts.Find((elem) => elem.__ssoAccountId.Equals(accountId));
-            if (result != null)
+            var index = DataLoad.Accounts.FindIndex((elem) => elem.AccountId.Equals(accountId));
+
+            if (index >= 0)
             {
-                result.__ssoPrivKey = privKey;
+                var account = DataLoad.Accounts[index];
+                account.PrivKey = privKey;
             }
             else
             {
-                __accounts.Add(new SavedSSOAccount(accountId, privKey));
+                DataLoad.Accounts.Add(new SSOAccount(accountId, privKey));
             }
         }
 
         public void RemoveAccount(string accountId)
         {
-            var result = __accounts.Find((elem) => elem.__ssoAccountId.Equals(accountId));
-            __accounts.Remove(result);
+            var index = DataLoad.Accounts.FindIndex((elem) => elem.AccountId.Equals(accountId));
+
+            if (index >= 0)
+                DataLoad.Accounts.RemoveAt(index);
+        }
+
+        public void ClearTmp()
+        {
+            DataLoad.TmpPrivKey = null;
+            DataLoad.TmpTx = null;
         }
     }
 
     [Serializable]
-    public class SavedSSOAccount
+    public struct SSOAccount
     {
-        public string __ssoAccountId;
-        public string __ssoPrivKey;
+        public string AccountId;
+        public string PrivKey;
 
-        public SavedSSOAccount(string accountId, string privKey)
+        public SSOAccount(string accountId, string privKey)
         {
-            __ssoAccountId = accountId;
-            __ssoPrivKey = privKey;
+            AccountId = accountId;
+            PrivKey = privKey;
+        }
+    }
+
+    [Serializable]
+    public class SSOLoadOut
+    {
+        public List<SSOAccount> Accounts = null;
+        public string TmpTx = null;
+        public string TmpPrivKey = null;
+
+        public SSOLoadOut()
+        {
+            Accounts = new List<SSOAccount>();
         }
     }
 }

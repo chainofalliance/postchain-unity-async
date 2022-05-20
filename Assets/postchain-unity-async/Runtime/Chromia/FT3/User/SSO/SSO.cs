@@ -1,6 +1,5 @@
-using System.Text.RegularExpressions;
+
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System;
 
@@ -22,7 +21,8 @@ namespace Chromia.Postchain.Ft3
             this.Blockchain = blockchain;
 
             if (store == null)
-                Store = new SSOStoreLocalStorage();
+                // Instantiate default standalone store
+                Store = new SSOStandaloneStore();
             else
                 Store = store;
         }
@@ -33,34 +33,34 @@ namespace Chromia.Postchain.Ft3
             set { _vaultUrl = value; }
         }
 
-        private async UniTask<(Account, User)[]> GetAccountAndUserByStoredIds()
+        private async UniTask<UserAccount[]> GetAccountAndUserByStoredIds()
         {
-            List<(Account, User)> aus = new List<(Account, User)>();
-            List<SavedSSOAccount> accounts = this.Store.GetAccounts();
+            List<UserAccount> userAccounts = new List<UserAccount>();
+            List<SSOAccount> accounts = this.Store.Accounts;
 
             foreach (var acc in accounts)
             {
-                var au = await GetAccountAndUserByStoredId(acc);
+                var userAccount = await GetAccountAndUserByStoredId(acc);
 
-                if (au.Error)
-                    UnityEngine.Debug.LogWarning(au.ErrorMessage);
+                if (userAccount.Error)
+                    UnityEngine.Debug.LogWarning(userAccount.ErrorMessage);
                 else
-                    aus.Add(au.Content);
+                    userAccounts.Add(userAccount.Content);
             }
 
-            return aus.ToArray();
+            return userAccounts.ToArray();
         }
 
-        private async UniTask<PostchainResponse<(Account, User)>> GetAccountAndUserByStoredId(SavedSSOAccount savedAccount)
+        private async UniTask<PostchainResponse<UserAccount>> GetAccountAndUserByStoredId(SSOAccount sSOAccount)
         {
-            var keyPair = new KeyPair(savedAccount.__ssoPrivKey);
+            var keyPair = new KeyPair(sSOAccount.PrivKey);
             var authDescriptor = new SingleSignatureAuthDescriptor(keyPair.PubKey, new FlagsType[] { FlagsType.Transfer });
             var user = new User(keyPair, authDescriptor);
 
-            var res = await this.Blockchain.NewSession(user).GetAccountById(savedAccount.__ssoAccountId);
+            var res = await this.Blockchain.NewSession(user).GetAccountById(sSOAccount.AccountId);
 
             if (res.Error)
-                return PostchainResponse<(Account, User)>.ErrorResponse(res.ErrorMessage);
+                return PostchainResponse<UserAccount>.ErrorResponse(res.ErrorMessage);
 
             var resValid = await res.Content.IsAuthDescriptorValid(user.AuthDescriptor.ID);
 
@@ -71,12 +71,12 @@ namespace Chromia.Postchain.Ft3
             else if (resValid.Content == false)
                 errorMessage = "Authdescriptor is not valid";
             else
-                return PostchainResponse<(Account, User)>.SuccessResponse((res.Content, user));
+                return PostchainResponse<UserAccount>.SuccessResponse(new UserAccount(user, res.Content));
 
-            return PostchainResponse<(Account, User)>.ErrorResponse(errorMessage);
+            return PostchainResponse<UserAccount>.ErrorResponse(errorMessage);
         }
 
-        public UniTask<(Account, User)[]> AutoLogin()
+        public UniTask<UserAccount[]> AutoLogin()
         {
             return GetAccountAndUserByStoredIds();
         }
@@ -84,7 +84,7 @@ namespace Chromia.Postchain.Ft3
         public void InitiateLogin(string successUrl, string cancelUrl)
         {
             KeyPair keyPair = new KeyPair();
-            this.Store.TmpPrivKey = keyPair.PrivKey;
+            this.Store.DataLoad.TmpPrivKey = Util.ByteArrayToString(keyPair.PrivKey);
             this.Store.Save();
 
             StringBuilder sb = new StringBuilder();
@@ -95,7 +95,7 @@ namespace Chromia.Postchain.Ft3
             UnityEngine.Application.OpenURL(sb.ToString());
         }
 
-        public async UniTask<PostchainResponse<(Account, User)>> FinalizeLogin(string tx)
+        public async UniTask<PostchainResponse<UserAccount>> FinalizeLogin(string tx)
         {
             var keyPair = this.Store.TmpKeyPair;
             this.Store.ClearTmp();
@@ -117,13 +117,16 @@ namespace Chromia.Postchain.Ft3
             if (!res.Error)
             {
                 var accountID = GetAccountId(gtx);
-                this.Store.AddAccount(accountID, Util.ByteArrayToString(keyPair.PrivKey));
+                this.Store.AddAccountOrPrivKey(
+                    accountID,
+                    Util.ByteArrayToString(keyPair.PrivKey)
+                );
                 this.Store.Save();
 
                 var resAccount = await this.Blockchain.NewSession(user).GetAccountById(accountID);
 
                 if (!resAccount.Error)
-                    return PostchainResponse<(Account, User)>.SuccessResponse((resAccount.Content, user));
+                    return PostchainResponse<UserAccount>.SuccessResponse(new UserAccount(user, resAccount.Content));
                 else
                     errorMessage = resAccount.ErrorMessage;
             }
@@ -132,7 +135,7 @@ namespace Chromia.Postchain.Ft3
                 errorMessage = res.ErrorMessage;
             }
 
-            return PostchainResponse<(Account, User)>.ErrorResponse(errorMessage);
+            return PostchainResponse<UserAccount>.ErrorResponse(errorMessage);
         }
 
         private string GetAccountId(Gtx gtx)
@@ -164,31 +167,17 @@ namespace Chromia.Postchain.Ft3
 
             return res;
         }
+    }
 
-        public static Dictionary<string, string> GetParams(string uri)
+    public struct UserAccount
+    {
+        public User User;
+        public Account Account;
+
+        public UserAccount(User user, Account account)
         {
-            var matches = Regex.Matches(uri, @"[\?&](([^&=]+)=([^&=#]*))", RegexOptions.Compiled);
-            return matches.Cast<Match>().ToDictionary(
-                m => Uri.UnescapeDataString(m.Groups[2].Value),
-                m => Uri.UnescapeDataString(m.Groups[3].Value)
-            );
-        }
-
-        // For Webgl
-        public async UniTask<PostchainResponse<(Account, User)>> PendingSSO()
-        {
-            var url = UnityEngine.Application.absoluteURL;
-            var pairs = GetParams(url);
-
-            if (pairs.ContainsKey("rawTx"))
-            {
-                var raw = pairs["rawTx"];
-                return await FinalizeLogin(raw);
-            }
-            else
-            {
-                return PostchainResponse<(Account, User)>.ErrorResponse("rawTx not found in url");
-            }
+            User = user;
+            Account = account;
         }
     }
 }

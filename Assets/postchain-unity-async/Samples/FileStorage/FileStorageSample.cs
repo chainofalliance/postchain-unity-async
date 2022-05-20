@@ -44,7 +44,9 @@ public class FileStorageSample : MonoBehaviour
 
     public void SaveWrapper()
     {
+#pragma warning disable 4014
         SaveText();
+#pragma warning restore 4014
     }
 
     public async UniTask SaveText()
@@ -64,7 +66,9 @@ public class FileStorageSample : MonoBehaviour
 
     public void LoadWrapper()
     {
+#pragma warning disable 4014
         LoadLatestText();
+#pragma warning restore 4014
     }
 
     public async UniTask LoadLatestText()

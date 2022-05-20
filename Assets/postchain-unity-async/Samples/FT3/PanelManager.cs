@@ -23,15 +23,15 @@ public class PanelManager : MonoBehaviour
         }
     }
 
-    public static void AddOptionsToPanel((Account, User)[] aus)
+    public static void AddOptionsToPanel(UserAccount[] aus)
     {
-        var options = aus.Select((elem) => new Dropdown.OptionData(elem.Item1.Id));
+        var options = aus.Select((elem) => new Dropdown.OptionData(elem.Account.Id));
         PanelManager.Instance.AccountsDropdown.AddOptions(options.ToList());
     }
 
-    public static void AddOptionToPanel((Account, User) au)
+    public static void AddOptionToPanel(UserAccount au)
     {
-        var option = new Dropdown.OptionData(au.Item1.Id);
+        var option = new Dropdown.OptionData(au.Account.Id);
         PanelManager.Instance.AccountsDropdown.AddOptions(new Dropdown.OptionData[] { option }.ToList());
     }
 }

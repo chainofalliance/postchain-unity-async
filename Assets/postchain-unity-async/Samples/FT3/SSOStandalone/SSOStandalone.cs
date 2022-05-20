@@ -5,7 +5,7 @@ using System;
 
 public class SSOStandalone : MonoBehaviour
 {
-    [SerializeField] private string _blockchainRID;
+    [SerializeField] private int _chainId;
     [SerializeField] private string _baseURL;
     [SerializeField] private string _vaultUrl;
     [SerializeField] private string _successUrl;
@@ -17,31 +17,32 @@ public class SSOStandalone : MonoBehaviour
 
     private void Awake()
     {
-        ProtocolHandler.HandleTempTx(_customProtocolName);
+        SSOStandaloneStore.SaveTmpTX(_customProtocolName);
         SSO.VaultUrl = _vaultUrl;
     }
 
     private async void Start()
     {
         Postchain postchain = new Postchain(_baseURL);
-        _blockchain = await postchain.Blockchain(_blockchainRID);
+        _blockchain = await postchain.Blockchain(_chainId);
         _sso = new SSO(this._blockchain);
 
         var aus = await _sso.AutoLogin();
         PanelManager.AddOptionsToPanel(aus);
     }
+
     private async UniTask SSOS()
     {
         ProtocolHandler.Register(_customProtocolName);
         _sso.InitiateLogin(_successUrl, _cancelUrl);
 
-        while (_sso.Store.TmpTx == null)
+        while (_sso.Store.DataLoad.TmpTx == null)
         {
-            await UniTask.Delay(TimeSpan.FromSeconds(3), ignoreTimeScale: false);
+            await UniTask.Delay(TimeSpan.FromSeconds(2), ignoreTimeScale: false);
             _sso.Store.Load();
         }
 
-        var payload = _sso.Store.TmpTx;
+        var payload = _sso.Store.DataLoad.TmpTx;
         payload = payload.Split("?"[0])[1];
         string raw = payload.Split("="[0])[1];
 

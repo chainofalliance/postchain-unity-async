@@ -1,7 +1,5 @@
 using Microsoft.Win32;
 
-using UnityEngine;
-
 using System.Diagnostics;
 using System.Text;
 using System;
@@ -96,28 +94,5 @@ namespace Chromia.Postchain.Ft3
             return result;
         }
 #endif
-
-        public static void HandleTempTx(string name)
-        {
-#if UNITY_STANDALONE
-            if (Application.isBatchMode)
-            {
-                string[] args = System.Environment.GetCommandLineArgs();
-                SSOStore store = new SSOStoreLocalStorage();
-                store.Load();
-
-                for (int i = 0; i < args.Length; i++)
-                {
-                    if (args[i].StartsWith(name))
-                    {
-                        store.TmpTx = args[i];
-                        store.Save();
-                        break;
-                    }
-                }
-                Application.Quit();
-            }
-#endif
-        }
     }
 }

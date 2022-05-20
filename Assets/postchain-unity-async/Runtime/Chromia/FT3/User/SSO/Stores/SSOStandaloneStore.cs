@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using UnityEngine;
+using System.IO;
 using System;
 
 namespace Chromia.Postchain.Ft3
@@ -7,8 +8,7 @@ namespace Chromia.Postchain.Ft3
     public class SSOStandaloneStore : SSOStore
     {
         private const string STORAGEKEY = "SSO";
-        // not really a .dat file
-        private const string FILENAME = STORAGEKEY + ".dat";
+        private const string FILENAME = STORAGEKEY + ".txt";
 
         public SSOStandaloneStore()
         {
@@ -17,19 +17,38 @@ namespace Chromia.Postchain.Ft3
 
         public override void Load()
         {
-            string result = null;
-            FileManager.LoadFromFile(FILENAME, out result);
+            var fullPath = Path.Combine(Application.persistentDataPath, FILENAME);
 
-            if (!String.IsNullOrEmpty(result))
+            if (!File.Exists(fullPath))
             {
+                Debug.LogWarning("File does not exist");
+                return;
+            }
+
+            try
+            {
+                var result = File.ReadAllText(fullPath);
                 DataLoad = JsonConvert.DeserializeObject<SSOLoadOut>(result);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to read from {fullPath} with exception {e}");
             }
         }
 
         public override void Save()
         {
             string data = JsonConvert.SerializeObject(DataLoad, Formatting.Indented);
-            FileManager.WriteToFile(FILENAME, data);
+            var fullPath = Path.Combine(Application.persistentDataPath, FILENAME);
+
+            try
+            {
+                File.WriteAllText(fullPath, data);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to write to {fullPath} with exception {e}");
+            }
         }
 
 

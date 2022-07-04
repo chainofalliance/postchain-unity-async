@@ -12,14 +12,14 @@ namespace Chromia.Postchain.Ft3
         {
 #if UNITY_STANDALONE_LINUX
             RegisterCustomProtocolUnix(name);
-#elif UNITY_STANDALONE_WIN
+#elif UNITY_STANDALONE_WIN && NET_4_6
             RegisterCustomProtocolWindows(name);
 #else
             throw new NotImplementedException();
 #endif
         }
 
-#if UNITY_STANDALONE_WIN
+#if UNITY_STANDALONE_WIN && NET_4_6
         private static void RegisterCustomProtocolWindows(string name)
         {
             var location = new StringBuilder(Process.GetCurrentProcess().MainModule.FileName);

@@ -26,18 +26,20 @@ namespace Chromia.Postchain.Client.Unity
 
         public static async UniTask<PostchainResponse<T>> Post<T>(Uri uri, string payload)
         {
-            var request = new UnityWebRequest(uri, "POST");
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(payload);
-            var uploader = new UploadHandlerRaw(bodyRaw);
+            using (var request = new UnityWebRequest(uri, "POST"))
+            {
+                byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(payload);
+                var uploader = new UploadHandlerRaw(bodyRaw);
 
-            uploader.contentType = "application/json";
+                uploader.contentType = "application/json";
 
-            request.uploadHandler = uploader;
-            request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+                request.uploadHandler = uploader;
+                request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
 
-            var response = await request.SendWebRequest();
+                var response = await request.SendWebRequest();
 
-            return new PostchainResponse<T>(response);
+                return new PostchainResponse<T>(response);
+            };
         }
 
         public static Uri ToUri(string baseUrl, string path)

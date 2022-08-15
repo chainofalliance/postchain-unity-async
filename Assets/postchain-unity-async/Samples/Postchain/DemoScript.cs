@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
+using System.Collections.Generic;
+
 public class DemoScript : MonoBehaviour
 {
 #pragma warning disable CS0649
@@ -8,6 +10,7 @@ public class DemoScript : MonoBehaviour
     [SerializeField] private Button _registerUserButton;
     [SerializeField] private InputField _checkUser;
     [SerializeField] private Button _checkUserButton;
+    [SerializeField] private Button _testButton;
     [SerializeField] private Text _infoText;
     [SerializeField] private BlockchainWrapper _blockchain;
 #pragma warning restore CS0649
@@ -16,6 +19,7 @@ public class DemoScript : MonoBehaviour
     {
         _registerUserButton.onClick.AddListener(OnRegisterUser);
         _checkUserButton.onClick.AddListener(OnCheckUser);
+        _testButton.onClick.AddListener(OnTest);
     }
 
     public async void OnRegisterUser()
@@ -42,6 +46,24 @@ public class DemoScript : MonoBehaviour
 
         if (!res.Error)
             OnCheckUserSuccess(res.Content);
+    }
+
+    public async void OnTest()
+    {
+        string username = _registerUser.text;
+
+        _testButton.interactable = false;
+
+        var res = await _blockchain.Operation("fun1", new Dictionary<string, int>() {
+            {"333", 123},
+            {"444", 345}
+        });
+
+        if (!res.Error)
+        {
+            _infoText.text = "Successfully tested! " + _registerUser.text;
+            _testButton.interactable = true;
+        }
     }
 
     private void OnCheckUserSuccess(bool doesUserExist)
